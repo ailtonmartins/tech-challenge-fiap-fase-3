@@ -72,6 +72,7 @@ produção.
 ```text
 .
 ├── compose.yaml
+├── contratos-grpc/                # contrato Protobuf e stubs gRPC gerados
 ├── servico-agendamento/
 ├── servico-historico/
 └── servico-notificacao/
@@ -80,3 +81,30 @@ produção.
 Cada serviço possui seu próprio Dockerfile e expõe somente endpoints
 operacionais nesta etapa. O PostgreSQL usa schemas separados para manter os
 dados de cada serviço organizados no ambiente local.
+
+## Build multi-módulo
+
+O projeto possui um único Gradle Wrapper na raiz. Os módulos
+`servico-historico` e `servico-notificacao` dependem somente do módulo
+`contratos-grpc`, que gera os stubs Java a partir do contrato Protobuf. Não há
+entidades JPA ou regras de domínio compartilhadas entre os serviços.
+
+Execute todos os testes a partir da raiz:
+
+```bash
+./gradlew test
+```
+
+Para gerar manualmente os stubs gRPC:
+
+```bash
+./gradlew :contratos-grpc:generateProto
+```
+
+Durante o desenvolvimento, cada serviço pode ser iniciado isoladamente:
+
+```bash
+./gradlew :servico-agendamento:bootRun
+./gradlew :servico-historico:bootRun
+./gradlew :servico-notificacao:bootRun
+```

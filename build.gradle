@@ -1,6 +1,7 @@
 plugins {
     id 'org.springframework.boot' version '3.5.16' apply false
     id 'io.spring.dependency-management' version '1.1.7' apply false
+    id 'com.google.protobuf' version '0.10.0' apply false
 }
 
 allprojects {
@@ -14,7 +15,6 @@ allprojects {
 
 subprojects {
     apply plugin: 'java'
-    apply plugin: 'org.springframework.boot'
     apply plugin: 'io.spring.dependency-management'
 
     java {
@@ -23,7 +23,7 @@ subprojects {
         }
     }
 
-    tasks.named('test') {
+    tasks.withType(Test).configureEach {
         useJUnitPlatform()
     }
 }

@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package fiap.techchallenge.historico.v1;
+
+option java_multiple_files = true;
+option java_package = "br.com.fiap.techchallenge.contratos.historico.v1";
+option java_outer_classname = "HistoricoNotificacaoProto";
+
+service HistoricoNotificacaoService {
+  rpc ObterDadosDoLembrete(ObterDadosDoLembreteRequest)
+      returns (DadosDoLembreteResponse);
+}
+
+message ObterDadosDoLembreteRequest {
+  string consulta_id = 1;
+}
+
+message DadosDoLembreteResponse {
+  string consulta_id = 1;
+  string paciente_nome = 2;
+  string paciente_email = 3;
+  string medico = 4;
+  string especialidade = 5;
+  string data_hora = 6;
+  string status = 7;
+}
