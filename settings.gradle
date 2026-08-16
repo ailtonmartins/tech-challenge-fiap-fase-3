@@ -1,0 +1,5 @@
+rootProject.name = 'tech-challenge-fiap-fase-3'
+
+include 'servico-agendamento'
+include 'servico-historico'
+include 'servico-notificacao'
