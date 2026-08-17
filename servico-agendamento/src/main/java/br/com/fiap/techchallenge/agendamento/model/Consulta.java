@@ -41,7 +41,7 @@ public class Consulta {
 
     @Version
     @Column(nullable = false)
-    private Long version;
+    private Long version = 0L;
 
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
@@ -99,5 +99,16 @@ public class Consulta {
 
     public StatusConsulta getStatus() {
         return status;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void atualizar(String medico, String especialidade, OffsetDateTime dataHora, String observacoes) {
+        this.medico = medico;
+        this.especialidade = especialidade;
+        this.dataHora = dataHora;
+        this.observacoes = observacoes;
     }
 }

@@ -1,5 +1,6 @@
 package br.com.fiap.techchallenge.agendamento.controller;
 
+import br.com.fiap.techchallenge.agendamento.dto.AtualizarConsultaRequest;
 import br.com.fiap.techchallenge.agendamento.dto.ConsultaResponse;
 import br.com.fiap.techchallenge.agendamento.dto.CriarConsultaRequest;
 import br.com.fiap.techchallenge.agendamento.service.ConsultaService;
@@ -8,8 +9,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -28,5 +31,13 @@ public class ConsultaController {
             Authentication authentication) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(consultaService.criar(request, authentication));
+    }
+
+    @PutMapping("/{id}")
+    public ConsultaResponse atualizar(
+            @PathVariable java.util.UUID id,
+            @Valid @RequestBody AtualizarConsultaRequest request,
+            Authentication authentication) {
+        return consultaService.atualizar(id, request, authentication);
     }
 }

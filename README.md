@@ -130,6 +130,23 @@ criada com status `AGENDADA`; não é permitido repetir paciente e horário. Ap�
 o commit, o serviço publica um evento no tópico Kafka `consulta.criada.v1`,
 sem incluir observações clínicas.
 
+Para alterar uma consulta, use `PUT /api/consultas/{id}` com os dados
+atualizados e a versão atual retornada pela criação ou última alteração:
+
+```json
+{
+  "medico": "Dra. Ana Silva",
+  "especialidade": "Cardiologia",
+  "dataHora": "2026-09-11T14:00:00-03:00",
+  "observacoes": "Horário reagendado",
+  "version": 0
+}
+```
+
+Consultas `CANCELADA` ou `REALIZADA` não podem ser alteradas. A versão evita
+sobrescrever alterações concorrentes e uma atualização bem-sucedida publica o
+evento `CONSULTA_ATUALIZADA` no tópico `consulta.atualizada.v1`.
+
 ## Estrutura
 
 ```text

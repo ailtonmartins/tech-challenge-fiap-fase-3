@@ -12,7 +12,8 @@ public record ConsultaResponse(
         String medico,
         String especialidade,
         OffsetDateTime dataHora,
-        StatusConsulta status) {
+        StatusConsulta status,
+        Long version) {
 
     public static ConsultaResponse from(Consulta consulta) {
         return new ConsultaResponse(
@@ -21,6 +22,7 @@ public record ConsultaResponse(
                 consulta.getMedico(),
                 consulta.getEspecialidade(),
                 consulta.getDataHora(),
-                consulta.getStatus());
+                consulta.getStatus(),
+                consulta.getVersion());
     }
 }

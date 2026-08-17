@@ -9,4 +9,6 @@ import java.util.UUID;
 public interface ConsultaRepository extends JpaRepository<Consulta, UUID> {
 
     boolean existsByPacienteIdAndDataHora(UUID pacienteId, OffsetDateTime dataHora);
+
+    boolean existsByPacienteIdAndDataHoraAndIdNot(UUID pacienteId, OffsetDateTime dataHora, UUID id);
 }

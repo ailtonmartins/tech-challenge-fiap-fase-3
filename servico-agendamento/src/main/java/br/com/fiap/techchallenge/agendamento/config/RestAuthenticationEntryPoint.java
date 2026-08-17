@@ -15,8 +15,7 @@ import java.nio.charset.StandardCharsets;
 public class RestAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
     @Override
-    public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException authenticationException)
-            throws IOException {
+    public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException authenticationException) throws IOException {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setHeader(HttpHeaders.WWW_AUTHENTICATE, "Basic realm=\"hospital\"");
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());

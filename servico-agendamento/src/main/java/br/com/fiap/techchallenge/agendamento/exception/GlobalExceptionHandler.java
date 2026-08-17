@@ -35,6 +35,24 @@ public class GlobalExceptionHandler {
                 .body(new ErroResponse("CONFLICT", "Já existe uma consulta agendada para o paciente neste horário"));
     }
 
+    @ExceptionHandler(ConsultaNaoEncontradaException.class)
+    ResponseEntity<ErroResponse> consultaNaoEncontrada() {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErroResponse("NOT_FOUND", "Consulta não encontrada"));
+    }
+
+    @ExceptionHandler(ConsultaNaoPodeSerAlteradaException.class)
+    ResponseEntity<ErroResponse> consultaNaoPodeSerAlterada() {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErroResponse("CONFLICT", "Consultas canceladas ou realizadas não podem ser alteradas"));
+    }
+
+    @ExceptionHandler(ConflitoDeAtualizacaoException.class)
+    ResponseEntity<ErroResponse> conflitoDeAtualizacao() {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErroResponse("CONFLICT", "A consulta foi alterada por outro usuário"));
+    }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     ResponseEntity<ErroResponse> violacaoDeIntegridade() {
         return ResponseEntity.status(HttpStatus.CONFLICT)
