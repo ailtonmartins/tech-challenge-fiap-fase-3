@@ -92,6 +92,24 @@ As regras de autorização são aplicadas na camada de serviço por
 As operações REST de consulta e as queries GraphQL que invocarão essas regras
 serão entregues nas histórias de agendamento e histórico.
 
+## Cadastro de pacientes
+
+`POST /api/pacientes` cadastra pacientes e é restrito a `MEDICO` e
+`ENFERMEIRO`.
+
+```json
+{
+  "nome": "Maria Souza",
+  "email": "maria@example.com",
+  "telefone": "+55 11 99999-9999",
+  "dataNascimento": "1990-05-20"
+}
+```
+
+O endpoint retorna `201 Created`. Nome, e-mail, telefone e data de nascimento
+são obrigatórios; o e-mail é validado e único sem diferenciar maiúsculas de
+minúsculas. Pacientes sem autorização recebem `403 Forbidden`.
+
 ## Estrutura
 
 ```text
