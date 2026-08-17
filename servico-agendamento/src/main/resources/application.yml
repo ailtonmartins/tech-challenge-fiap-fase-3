@@ -1,6 +1,16 @@
 spring:
   application:
     name: servico-agendamento
+  datasource:
+    url: ${AGENDAMENTO_DB_URL:jdbc:postgresql://localhost:5432/hospital?currentSchema=agendamento}
+    username: ${POSTGRES_USER:hospital_app}
+    password: ${POSTGRES_PASSWORD:123456}
+  flyway:
+    default-schema: agendamento
+    schemas: agendamento
+  jpa:
+    hibernate:
+      ddl-auto: validate
 
 server:
   port: ${SERVER_PORT:8080}

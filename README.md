@@ -67,6 +67,17 @@ desenvolvimento. Copie-o para `.env` e altere as senhas quando necessário.
 O arquivo `.env` é ignorado pelo Git e não deve conter credenciais reais de
 produção.
 
+## Autenticação
+
+O serviço de agendamento usa HTTP Basic com senhas armazenadas exclusivamente
+como hash BCrypt. Os usuários podem ter os perfis `MEDICO`, `ENFERMEIRO` ou
+`PACIENTE`. Nesta etapa, usuários devem ser cadastrados diretamente no banco;
+a massa de demonstração será adicionada em história posterior.
+
+O endpoint `GET /api/usuarios/me` permite validar a autenticação e requer
+credenciais HTTP Basic. Credenciais ausentes ou inválidas retornam `401` sem
+expor senha, hash ou detalhes internos. O health check permanece público.
+
 ## Estrutura
 
 ```text

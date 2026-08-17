@@ -65,6 +65,8 @@ services:
     environment:
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:29092}
       AGENDAMENTO_DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-hospital}?currentSchema=agendamento
+      POSTGRES_USER: ${POSTGRES_USER:-hospital_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123456}
     ports:
       - "8080:8080"
     depends_on:
