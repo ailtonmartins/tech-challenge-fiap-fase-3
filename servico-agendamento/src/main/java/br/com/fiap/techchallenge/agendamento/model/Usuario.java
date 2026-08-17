@@ -83,4 +83,8 @@ public class Usuario {
     public boolean isEnabled() {
         return enabled;
     }
+
+    public UUID getPacienteId() {
+        return pacienteId;
+    }
 }

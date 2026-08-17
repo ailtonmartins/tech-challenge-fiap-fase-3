@@ -78,6 +78,20 @@ O endpoint `GET /api/usuarios/me` permite validar a autenticação e requer
 credenciais HTTP Basic. Credenciais ausentes ou inválidas retornam `401` sem
 expor senha, hash ou detalhes internos. O health check permanece público.
 
+## Autorização
+
+As regras de autorização são aplicadas na camada de serviço por
+`ConsultaAuthorizationService`, para que não dependam apenas de uma rota HTTP:
+
+- `MEDICO` e `ENFERMEIRO` podem criar e alterar consultas, além de consultar
+  históricos;
+- `PACIENTE` não pode gerenciar consultas e só pode consultar dados vinculados
+  ao seu próprio `pacienteId`;
+- uma autorização insuficiente retorna `403` com uma resposta segura.
+
+As operações REST de consulta e as queries GraphQL que invocarão essas regras
+serão entregues nas histórias de agendamento e histórico.
+
 ## Estrutura
 
 ```text
