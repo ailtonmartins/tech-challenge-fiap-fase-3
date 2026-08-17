@@ -23,6 +23,18 @@ public class GlobalExceptionHandler {
                 .body(new ErroResponse("CONFLICT", "Já existe um paciente cadastrado com este e-mail"));
     }
 
+    @ExceptionHandler(PacienteNaoEncontradoException.class)
+    ResponseEntity<ErroResponse> pacienteNaoEncontrado() {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErroResponse("NOT_FOUND", "Paciente não encontrado"));
+    }
+
+    @ExceptionHandler(ConflitoDeAgendamentoException.class)
+    ResponseEntity<ErroResponse> conflitoDeAgendamento() {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErroResponse("CONFLICT", "Já existe uma consulta agendada para o paciente neste horário"));
+    }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     ResponseEntity<ErroResponse> violacaoDeIntegridade() {
         return ResponseEntity.status(HttpStatus.CONFLICT)

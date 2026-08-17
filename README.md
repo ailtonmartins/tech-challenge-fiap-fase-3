@@ -110,6 +110,26 @@ O endpoint retorna `201 Created`. Nome, e-mail, telefone e data de nascimento
 são obrigatórios; o e-mail é validado e único sem diferenciar maiúsculas de
 minúsculas. Pacientes sem autorização recebem `403 Forbidden`.
 
+## Criação de consultas
+
+`POST /api/consultas` cria uma consulta para um paciente existente e é
+restrito a `MEDICO` e `ENFERMEIRO`.
+
+```json
+{
+  "pacienteId": "UUID_DO_PACIENTE",
+  "medico": "Dra. Ana Silva",
+  "especialidade": "Cardiologia",
+  "dataHora": "2026-09-10T14:00:00-03:00",
+  "observacoes": "Consulta de acompanhamento"
+}
+```
+
+`dataHora` deve ter offset de fuso horário e estar no futuro. A consulta é
+criada com status `AGENDADA`; não é permitido repetir paciente e horário. Após
+o commit, o serviço publica um evento no tópico Kafka `consulta.criada.v1`,
+sem incluir observações clínicas.
+
 ## Estrutura
 
 ```text
