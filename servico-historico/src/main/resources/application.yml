@@ -1,6 +1,29 @@
 spring:
   application:
     name: servico-historico
+  datasource:
+    url: ${HISTORICO_DB_URL:jdbc:postgresql://localhost:5432/hospital?currentSchema=historico}
+    username: ${POSTGRES_USER:hospital_app}
+    password: ${POSTGRES_PASSWORD:123456}
+  flyway:
+    default-schema: historico
+    schemas: historico
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: historico-consumer-v1
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: br.com.fiap.techchallenge.historico
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: br.com.fiap.techchallenge.historico.dto.ConsultaEvento
+    listener:
+      ack-mode: record
 
 server:
   port: ${SERVER_PORT:8081}
