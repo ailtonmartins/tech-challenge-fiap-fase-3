@@ -107,13 +107,13 @@ As regras de autorização são aplicadas na camada de serviço por
 `ConsultaAuthorizationService`, para que não dependam apenas de uma rota HTTP:
 
 - `MEDICO` e `ENFERMEIRO` podem criar e alterar consultas, além de consultar
-  históricos;
-- `PACIENTE` não pode gerenciar consultas e só pode consultar dados vinculados
-  ao seu próprio `pacienteId`;
+  históricos por GraphQL;
+- `PACIENTE` não pode gerenciar consultas e, pela query GraphQL
+  `minhasConsultas`, só consulta dados vinculados ao seu usuário autenticado;
 - uma autorização insuficiente retorna `403` com uma resposta segura.
 
-As operações REST de consulta e as queries GraphQL que invocarão essas regras
-serão entregues nas histórias de agendamento e histórico.
+As regras também são verificadas na camada de serviço ou resolver, sem depender
+somente da proteção da rota HTTP.
 
 ## Cadastro de pacientes
 
@@ -204,7 +204,10 @@ O serviço de histórico expõe `POST http://localhost:8081/graphql`. As queries
 `ENFERMEIRO` e aceitam `pacienteId`, `pagina` e `tamanho`; o tamanho máximo é
 50. Erros de execução GraphQL retornam um código estável em
 `errors[].extensions.code`: `FORBIDDEN`, `NOT_FOUND` ou `VALIDATION_ERROR`.
-A collection em [`postman/`](postman/) contém os exemplos executáveis.
+A query `minhasConsultas`, exclusiva do perfil `PACIENTE`, determina o paciente
+vinculado ao usuário autenticado e não aceita `pacienteId`. Ela aceita o filtro
+`somenteFuturas`; sua resposta não expõe o identificador do paciente. A
+collection em [`postman/`](postman/) contém os exemplos executáveis.
 
 O script gRPC nessa pasta é um cenário preparado para a US-12: o contrato já
 existe, mas o servidor gRPC será disponibilizado nessa próxima história.

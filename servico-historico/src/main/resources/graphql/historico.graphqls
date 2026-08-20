@@ -1,6 +1,23 @@
 type Query {
   historicoDoPaciente(pacienteId: ID!, pagina: Int = 0, tamanho: Int = 20): PaginaHistorico!
   consultasFuturas(pacienteId: ID!, pagina: Int = 0, tamanho: Int = 20): PaginaHistorico!
+  minhasConsultas(somenteFuturas: Boolean = false, pagina: Int = 0, tamanho: Int = 20): PaginaMinhasConsultas!
+}
+
+type PaginaMinhasConsultas {
+  consultas: [ConsultaPaciente!]!
+  pagina: Int!
+  tamanho: Int!
+  totalElementos: Float!
+  totalPaginas: Int!
+}
+
+type ConsultaPaciente {
+  consultaId: ID!
+  medico: String!
+  especialidade: String!
+  dataHora: String!
+  status: String!
 }
 
 type PaginaHistorico {

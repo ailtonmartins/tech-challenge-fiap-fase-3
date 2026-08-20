@@ -58,6 +58,17 @@
       }
     },
     {
+      "name": "GraphQL - Minhas consultas (paciente)",
+      "request": {
+        "auth": {"type": "basic", "basic": [{"key": "username", "value": "{{pacienteUsuario}}", "type": "string"}, {"key": "password", "value": "{{senhaDemo}}", "type": "string"}]},
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {"mode": "raw", "raw": "{\n  \"query\": \"query { minhasConsultas(somenteFuturas: true, pagina: 0, tamanho: 20) { consultas { consultaId medico especialidade dataHora status } totalElementos } }\"\n}"},
+        "url": "{{historicoUrl}}/graphql"
+      },
+      "event": [{"listen": "test", "script": {"exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Resposta não expõe pacienteId', () => pm.expect(JSON.stringify(pm.response.json())).not.to.include('pacienteId'));"]}}]
+    },
+    {
       "name": "gRPC - US-12 (comando grpcurl preparado)",
       "description": "O servidor gRPC ainda não existe nesta etapa. Quando a US-12 expuser localhost:9090, execute no terminal: grpcurl -plaintext -import-path contratos-grpc/src/main/proto -proto historico_notificacao.proto -d '{\"consulta_id\":\"30000000-0000-0000-0000-000000000001\"}' localhost:9090 fiap.techchallenge.historico.v1.HistoricoNotificacaoService/ObterDadosDoLembrete",
       "item": []

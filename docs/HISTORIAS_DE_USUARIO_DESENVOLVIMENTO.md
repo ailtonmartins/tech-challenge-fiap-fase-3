@@ -93,8 +93,8 @@ As prioridades seguem esta convenção:
 
 - [x] Médico e enfermeiro podem criar e alterar consultas.
 - [x] Paciente não pode criar ou alterar consultas.
-- [ ] Médico e enfermeiro podem consultar histórico de pacientes — depende da API GraphQL da US-09.
-- [ ] Paciente consulta somente as próprias consultas — depende da API GraphQL da US-10.
+- [x] Médico e enfermeiro podem consultar histórico de pacientes — entregue pela API GraphQL da US-09.
+- [x] Paciente consulta somente as próprias consultas — entregue pela API GraphQL da US-10.
 - [x] Um acesso fora dessas regras retorna `403 Forbidden`.
 - [x] A autorização é aplicada na camada de serviço ou resolver, e não apenas na rota HTTP.
 
@@ -211,11 +211,11 @@ As prioridades seguem esta convenção:
 
 **Critérios de aceite:**
 
-- [ ] A query `minhasConsultas` usa o paciente vinculado ao usuário autenticado.
-- [ ] O paciente pode filtrar somente consultas futuras.
-- [ ] O paciente não envia ou escolhe livremente outro `pacienteId` para acessar dados.
-- [ ] Uma tentativa de acessar consulta de outro paciente retorna `403 Forbidden`.
-- [ ] O retorno não expõe dados além do necessário para o paciente.
+- [x] A query `minhasConsultas` usa o paciente vinculado ao usuário autenticado.
+- [x] O paciente pode filtrar somente consultas futuras.
+- [x] O paciente não envia ou escolhe livremente outro `pacienteId` para acessar dados.
+- [x] Uma tentativa de acessar consulta de outro paciente retorna `403 Forbidden`.
+- [x] O retorno não expõe dados além do necessário para o paciente.
 
 ---
 
