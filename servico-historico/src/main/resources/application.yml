@@ -24,6 +24,13 @@ spring:
         spring.json.value.default.type: br.com.fiap.techchallenge.historico.dto.ConsultaEvento
     listener:
       ack-mode: record
+  graphql:
+    path: /graphql
+
+app:
+  historico:
+    paginacao:
+      tamanho-maximo: 50
 
 server:
   port: ${SERVER_PORT:8081}

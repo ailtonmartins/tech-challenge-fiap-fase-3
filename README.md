@@ -197,6 +197,18 @@ com sucesso. Como consequência desse fluxo assíncrono, o histórico tem
 **consistência eventual**: após criar ou alterar uma consulta, sua leitura no
 histórico pode levar alguns instantes para refletir o novo estado.
 
+## Consultas GraphQL do histórico
+
+O serviço de histórico expõe `POST http://localhost:8081/graphql`. As queries
+`historicoDoPaciente` e `consultasFuturas` exigem HTTP Basic de `MEDICO` ou
+`ENFERMEIRO` e aceitam `pacienteId`, `pagina` e `tamanho`; o tamanho máximo é
+50. Erros de execução GraphQL retornam um código estável em
+`errors[].extensions.code`: `FORBIDDEN`, `NOT_FOUND` ou `VALIDATION_ERROR`.
+A collection em [`postman/`](postman/) contém os exemplos executáveis.
+
+O script gRPC nessa pasta é um cenário preparado para a US-12: o contrato já
+existe, mas o servidor gRPC será disponibilizado nessa próxima história.
+
 ## Estrutura
 
 ```text

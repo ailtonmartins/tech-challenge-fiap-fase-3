@@ -1,0 +1,66 @@
+{
+  "info": {
+    "name": "Tech Challenge FIAP - Fase 3",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {"key": "agendamentoUrl", "value": "http://localhost:8080"},
+    {"key": "historicoUrl", "value": "http://localhost:8081"},
+    {"key": "medicoUsuario", "value": "medico.demo"},
+    {"key": "senhaDemo", "value": "fiap-dev-2026"},
+    {"key": "pacienteMariaId", "value": "20000000-0000-0000-0000-000000000001"},
+    {"key": "enfermeiroUsuario", "value": "enfermeiro.demo"},
+    {"key": "pacienteUsuario", "value": "maria.demo"}
+  ],
+  "item": [
+    {
+      "name": "Agendamento - Health e segurança",
+      "item": [
+        {"name":"Health público","request":{"method":"GET","url":"{{agendamentoUrl}}/actuator/health"},"event":[{"listen":"test","script":{"exec":["pm.test('Status 200', () => pm.response.to.have.status(200));"]}}]},
+        {"name":"Médico autenticado","request":{"auth":{"type":"basic","basic":[{"key":"username","value":"{{medicoUsuario}}","type":"string"},{"key":"password","value":"{{senhaDemo}}","type":"string"}]},"method":"GET","url":"{{agendamentoUrl}}/api/usuarios/me"},"event":[{"listen":"test","script":{"exec":["pm.test('Status 200', () => pm.response.to.have.status(200));","pm.expect(pm.response.json().perfil).to.eql('MEDICO');"]}}]},
+        {"name":"Sem credenciais (401)","request":{"method":"GET","url":"{{agendamentoUrl}}/api/usuarios/me"},"event":[{"listen":"test","script":{"exec":["pm.test('Status 401', () => pm.response.to.have.status(401));"]}}]},
+        {"name":"Paciente não cria consulta (403)","request":{"auth":{"type":"basic","basic":[{"key":"username","value":"{{pacienteUsuario}}","type":"string"},{"key":"password","value":"{{senhaDemo}}","type":"string"}]},"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\"pacienteId\":\"{{pacienteMariaId}}\",\"medico\":\"Dra. Ana\",\"especialidade\":\"Cardiologia\",\"dataHora\":\"2030-01-01T10:00:00-03:00\"}"},"url":"{{agendamentoUrl}}/api/consultas"},"event":[{"listen":"test","script":{"exec":["pm.test('Status 403', () => pm.response.to.have.status(403));"]}}]}
+      ]
+    },
+    {
+      "name": "Agendamento - Fluxo principal (execute na ordem)",
+      "event":[{"listen":"prerequest","script":{"exec":["if (!pm.collectionVariables.get('sufixoExecucao')) { pm.collectionVariables.set('sufixoExecucao', Date.now().toString()); pm.collectionVariables.set('dataHoraConsulta', new Date(Date.now() + 10 * 86400000).toISOString()); pm.collectionVariables.set('dataHoraAtualizada', new Date(Date.now() + 11 * 86400000).toISOString()); }"]}}],
+      "item":[
+        {"name":"1 - Cadastrar paciente","request":{"auth":{"type":"basic","basic":[{"key":"username","value":"{{medicoUsuario}}","type":"string"},{"key":"password","value":"{{senhaDemo}}","type":"string"}]},"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\"nome\":\"Paciente Postman {{sufixoExecucao}}\",\"email\":\"postman.{{sufixoExecucao}}@fiap.dev\",\"telefone\":\"+55 11 99999-9999\",\"dataNascimento\":\"1990-05-20\"}"},"url":"{{agendamentoUrl}}/api/pacientes"},"event":[{"listen":"test","script":{"exec":["pm.test('Status 201', () => pm.response.to.have.status(201));","pm.collectionVariables.set('pacienteCriadoId', pm.response.json().id);"]}}]},
+        {"name":"2 - Criar consulta","request":{"auth":{"type":"basic","basic":[{"key":"username","value":"{{enfermeiroUsuario}}","type":"string"},{"key":"password","value":"{{senhaDemo}}","type":"string"}]},"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\"pacienteId\":\"{{pacienteCriadoId}}\",\"medico\":\"Dra. Ana Martins\",\"especialidade\":\"Cardiologia\",\"dataHora\":\"{{dataHoraConsulta}}\",\"observacoes\":\"Consulta criada pelo Postman\"}"},"url":"{{agendamentoUrl}}/api/consultas"},"event":[{"listen":"test","script":{"exec":["pm.test('Status 201', () => pm.response.to.have.status(201));","pm.collectionVariables.set('consultaCriadaId', pm.response.json().id);","pm.collectionVariables.set('consultaVersao', pm.response.json().version);"]}}]},
+        {"name":"3 - Alterar consulta","request":{"auth":{"type":"basic","basic":[{"key":"username","value":"{{medicoUsuario}}","type":"string"},{"key":"password","value":"{{senhaDemo}}","type":"string"}]},"method":"PUT","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\"medico\":\"Dra. Ana Martins\",\"especialidade\":\"Neurologia\",\"dataHora\":\"{{dataHoraAtualizada}}\",\"observacoes\":\"Consulta alterada pelo Postman\",\"version\":{{consultaVersao}}}"},"url":"{{agendamentoUrl}}/api/consultas/{{consultaCriadaId}}"},"event":[{"listen":"test","script":{"exec":["pm.test('Status 200', () => pm.response.to.have.status(200));","pm.expect(pm.response.json().especialidade).to.eql('Neurologia');"]}}]}
+      ]
+    },
+    {
+      "name": "HTTP - Health histórico",
+      "request": {"method": "GET", "url": "{{historicoUrl}}/actuator/health"},
+      "event": [{"listen": "test", "script": {"exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"]}}]
+    },
+    {
+      "name": "GraphQL - Histórico da Maria",
+      "request": {
+        "auth": {"type": "basic", "basic": [{"key": "username", "value": "{{medicoUsuario}}", "type": "string"}, {"key": "password", "value": "{{senhaDemo}}", "type": "string"}]},
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {"mode": "raw", "raw": "{\n  \"query\": \"query($pacienteId: ID!) { historicoDoPaciente(pacienteId: $pacienteId, pagina: 0, tamanho: 20) { consultas { consultaId medico especialidade dataHora status } pagina tamanho totalElementos totalPaginas } }\",\n  \"variables\": { \"pacienteId\": \"{{pacienteMariaId}}\" }\n}"},
+        "url": "{{historicoUrl}}/graphql"
+      },
+      "event": [{"listen": "test", "script": {"exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Sem erros GraphQL', () => pm.expect(pm.response.json().errors).to.be.undefined);"]}}]
+    },
+    {
+      "name": "GraphQL - Consultas futuras da Maria",
+      "request": {
+        "auth": {"type": "basic", "basic": [{"key": "username", "value": "{{medicoUsuario}}", "type": "string"}, {"key": "password", "value": "{{senhaDemo}}", "type": "string"}]},
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {"mode": "raw", "raw": "{\n  \"query\": \"query($pacienteId: ID!) { consultasFuturas(pacienteId: $pacienteId, pagina: 0, tamanho: 20) { consultas { consultaId dataHora status } totalElementos } }\",\n  \"variables\": { \"pacienteId\": \"{{pacienteMariaId}}\" }\n}"},
+        "url": "{{historicoUrl}}/graphql"
+      }
+    },
+    {
+      "name": "gRPC - US-12 (comando grpcurl preparado)",
+      "description": "O servidor gRPC ainda não existe nesta etapa. Quando a US-12 expuser localhost:9090, execute no terminal: grpcurl -plaintext -import-path contratos-grpc/src/main/proto -proto historico_notificacao.proto -d '{\"consulta_id\":\"30000000-0000-0000-0000-000000000001\"}' localhost:9090 fiap.techchallenge.historico.v1.HistoricoNotificacaoService/ObterDadosDoLembrete",
+      "item": []
+    }
+  ]
+}

@@ -75,6 +75,22 @@ public class ConsultaHistorico {
         return consultaId;
     }
 
+    public UUID getPacienteId() {
+        return pacienteId;
+    }
+
+    public String getMedico() {
+        return medico;
+    }
+
+    public String getEspecialidade() {
+        return especialidade;
+    }
+
+    public OffsetDateTime getDataHora() {
+        return dataHora;
+    }
+
     public StatusConsulta getStatus() {
         return status;
     }

@@ -194,13 +194,13 @@ As prioridades seguem esta convenção:
 
 **Critérios de aceite:**
 
-- [ ] A API GraphQL está disponível em `POST /graphql` no serviço de histórico.
-- [ ] A query `historicoDoPaciente` retorna consultas paginadas do paciente solicitado.
-- [ ] A query `consultasFuturas` retorna somente consultas com data/hora futura.
-- [ ] O retorno inclui identificador, profissional, especialidade, data/hora e status.
-- [ ] Médico e enfermeiro recebem `200 OK` para consultas autorizadas.
-- [ ] Parâmetros de paginação possuem limites máximos.
-- [ ] Erros possuem códigos claros, como `NOT_FOUND`, `FORBIDDEN` e `VALIDATION_ERROR`.
+- [x] A API GraphQL está disponível em `POST /graphql` no serviço de histórico.
+- [x] A query `historicoDoPaciente` retorna consultas paginadas do paciente solicitado.
+- [x] A query `consultasFuturas` retorna somente consultas com data/hora futura.
+- [x] O retorno inclui identificador, profissional, especialidade, data/hora e status.
+- [x] Médico e enfermeiro recebem `200 OK` para consultas autorizadas.
+- [x] Parâmetros de paginação possuem limites máximos.
+- [x] Erros possuem códigos claros, como `NOT_FOUND`, `FORBIDDEN` e `VALIDATION_ERROR`.
 
 ---
 
@@ -250,7 +250,7 @@ As prioridades seguem esta convenção:
 - [ ] A chamada recebe `consultaId` e retorna apenas dados necessários ao lembrete.
 - [ ] O cliente gRPC usa deadline/timeout configurável.
 - [ ] Indisponibilidade do histórico provoca retentativa limitada e circuit breaker, sem confirmar prematuramente o offset Kafka.
-- [ ] A comunicação interna possui autenticação adequada; em produção, usar mTLS.
+- [ ] A comunicação interna possui autenticação adequada
 
 ---
 
