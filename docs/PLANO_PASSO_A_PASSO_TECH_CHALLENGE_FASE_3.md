@@ -462,8 +462,8 @@ Criar as tabelas com migrations Flyway versionadas, por exemplo:
 
 ```text
 V1__criar_tabela_usuario.sql
-V2__criar_tabela_paciente.sql
-V3__criar_tabela_consulta.sql
+V1__criar_tabela_paciente.sql
+V2__criar_tabela_consulta.sql
 ```
 
 ### Seed para desenvolvimento e cenários de teste manual
