@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package fiap.techchallenge.historico.v1;
+
+option java_multiple_files = true;
+option java_package = "br.com.fiap.techchallenge.contratos.paciente.v1";
+option java_outer_classname = "BuscaPacienteByIdProto";
+
+service BuscaPacienteById {
+  rpc ObterDadosDoPaciente(ObterDadosDoPacienteRequest)
+      returns (DadosDoPacienteResponse);
+}
+
+message ObterDadosDoPacienteRequest {
+  string paciente_id = 1;
+}
+
+message DadosDoPacienteResponse {
+  string paciente_id = 1;
+  string paciente_nome = 2;
+  string paciente_email = 3;
+  string paciente_telefone = 4;
+}

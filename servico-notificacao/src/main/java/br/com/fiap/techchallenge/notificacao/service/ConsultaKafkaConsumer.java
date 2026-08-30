@@ -50,6 +50,7 @@ public class ConsultaKafkaConsumer {
             LOGGER.info("Status de consulta inválido para notificação: {}", consulta.getStatus());
             throw new ConsultaNaoNotificadaException(consulta.getId());
         }
+        //buscar os dados do paciente em uma chamda grpc no serviço de agendamento, e enviar para os canais de notificação
         Paciente paciente = pacienteRepository.findById(consulta.getPacienteId()).orElseThrow(() -> new PacienteNaoEncontradoException(consulta.getPacienteId()));
         notificarCanais(paciente);
         atualizarStatusConsulta(consulta);
