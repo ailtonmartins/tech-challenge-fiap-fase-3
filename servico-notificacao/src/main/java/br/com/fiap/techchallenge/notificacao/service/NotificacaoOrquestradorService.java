@@ -1,20 +1,22 @@
 package br.com.fiap.techchallenge.notificacao.service;
 
+import br.com.fiap.techchallenge.contratos.paciente.v1.DadosDoPacienteResponse;
 import br.com.fiap.techchallenge.notificacao.dto.ConsultaCriadaEvento;
+import br.com.fiap.techchallenge.notificacao.dto.DadosNotificacaoPaciente;
 import br.com.fiap.techchallenge.notificacao.exception.ConsultaNaoEncontradaException;
 import br.com.fiap.techchallenge.notificacao.exception.ConsultaNaoNotificadaException;
-import br.com.fiap.techchallenge.notificacao.exception.PacienteNaoEncontradoException;
+import br.com.fiap.techchallenge.notificacao.grpc.utils.EntityMapperUtil;
 import br.com.fiap.techchallenge.notificacao.model.Consulta;
-import br.com.fiap.techchallenge.notificacao.model.Paciente;
 import br.com.fiap.techchallenge.notificacao.model.StatusConsulta;
 import br.com.fiap.techchallenge.notificacao.repository.ConsultaRepository;
-import br.com.fiap.techchallenge.notificacao.repository.PacienteRepository;
 import br.com.fiap.techchallenge.notificacao.service.impl.NotificacaoEmailService;
 import br.com.fiap.techchallenge.notificacao.service.impl.NotificacaoSmsService;
 import br.com.fiap.techchallenge.notificacao.service.impl.NotificacaoWhatsappService;
+import br.com.fiap.techchallenge.notificacao.grpc.PacienteGrpcClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+
 
 @Service
 public class NotificacaoOrquestradorService {
@@ -25,14 +27,18 @@ public class NotificacaoOrquestradorService {
     private final NotificacaoWhatsappService notificacaoWhatsappService;
     private final NotificacaoSmsService notificacaoSmsService;
     private final ConsultaRepository consultaRepository;
-    private final PacienteRepository pacienteRepository;
+    private final PacienteGrpcClient pacienteGrpcClient;
 
-    public NotificacaoOrquestradorService(NotificacaoEmailService notificacaoEmailService, NotificacaoWhatsappService notificacaoWhatsappService, NotificacaoSmsService notificacaoSmsService, ConsultaRepository consultaRepository, PacienteRepository pacienteRepository) {
+    public NotificacaoOrquestradorService(NotificacaoEmailService notificacaoEmailService,
+                                          NotificacaoWhatsappService notificacaoWhatsappService,
+                                          NotificacaoSmsService notificacaoSmsService,
+                                          ConsultaRepository consultaRepository,
+                                          PacienteGrpcClient pacienteGrpcClient) {
         this.notificacaoEmailService = notificacaoEmailService;
         this.notificacaoWhatsappService = notificacaoWhatsappService;
         this.notificacaoSmsService = notificacaoSmsService;
         this.consultaRepository = consultaRepository;
-        this.pacienteRepository = pacienteRepository;
+        this.pacienteGrpcClient = pacienteGrpcClient;
     }
 
     public void processarEventoConsultaCriada(ConsultaCriadaEvento evento) {
@@ -41,9 +47,9 @@ public class NotificacaoOrquestradorService {
             LOGGER.info("Status de consulta inválido para notificação: {}", consulta.getStatus());
             throw new ConsultaNaoNotificadaException(consulta.getId());
         }
-        //buscar os dados do paciente em uma chamda grpc no serviço de agendamento, e enviar para os canais de notificação
-        Paciente paciente = pacienteRepository.findById(consulta.getPacienteId()).orElseThrow(() -> new PacienteNaoEncontradoException(consulta.getPacienteId()));
-        notificarCanais(paciente);
+
+        DadosDoPacienteResponse paciente = pacienteGrpcClient.obterDadosDoPaciente(String.valueOf(evento.pacienteId()));
+        notificarCanais(EntityMapperUtil.toEntity(paciente));
         atualizarStatusConsulta(consulta);
     }
 
@@ -52,10 +58,10 @@ public class NotificacaoOrquestradorService {
         consultaRepository.save(consulta);
     }
 
-    private void notificarCanais(Paciente paciente) {
-        notificacaoEmailService.enviarNotificacao(paciente.getNome(), paciente.getEmail());
-        notificacaoSmsService.enviarNotificacao(paciente.getNome(), paciente.getTelefone());
-        notificacaoWhatsappService.enviarNotificacao(paciente.getNome(), paciente.getTelefone());
+    private void notificarCanais(DadosNotificacaoPaciente paciente) {
+        notificacaoEmailService.enviarNotificacao(paciente.nome(), paciente.email());
+        notificacaoSmsService.enviarNotificacao(paciente.nome(), paciente.telefone());
+        notificacaoWhatsappService.enviarNotificacao(paciente.nome(), paciente.telefone());
     }
 
 }
