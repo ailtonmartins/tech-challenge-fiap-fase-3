@@ -17,7 +17,11 @@ import java.util.UUID;
 public class BuscaPacienteGrpcServiceImpl extends BuscaPacienteByIdGrpc.BuscaPacienteByIdImplBase {
     private static final Logger log = LoggerFactory.getLogger(BuscaPacienteGrpcServiceImpl.class);
 
-    private PacienteRepository pacienteRepository;
+    private final PacienteRepository pacienteRepository;
+
+    public BuscaPacienteGrpcServiceImpl(PacienteRepository pacienteRepository) {
+        this.pacienteRepository = pacienteRepository;
+    }
 
     @Override
     public void obterDadosDoPaciente(ObterDadosDoPacienteRequest request, StreamObserver<DadosDoPacienteResponse> responseObserver) {

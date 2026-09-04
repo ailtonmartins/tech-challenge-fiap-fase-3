@@ -1,5 +1,6 @@
 package br.com.fiap.techchallenge.notificacao.config;
 
+import br.com.fiap.techchallenge.notificacao.dto.ConsultaCriadaEvento;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.context.annotation.Bean;
@@ -19,28 +20,30 @@ import java.util.Map;
 public class KafkaConfig {
 
     @Bean
-    public Map<String, Object> consumerConfigs(){
+    public Map<String, Object> consumerConfigs() {
         Map<String, Object> props = new HashMap<>();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, "notificacao_criacao_consulta");
-        props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
+        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+        props.put(JsonDeserializer.TRUSTED_PACKAGES, "br.com.fiap.techchallenge.notificacao");
+        props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, "br.com.fiap.techchallenge.notificacao.dto.ConsultaCriadaEvento");
         return props;
     }
 
     @Bean
-    public ConsumerFactory<String, Object> consumerFactory(){
-        return new DefaultKafkaConsumerFactory<>(consumerConfigs());
+    public ConsumerFactory<String, ConsultaCriadaEvento> consumerFactory() {
+        JsonDeserializer<ConsultaCriadaEvento> deserializer = new JsonDeserializer<>(ConsultaCriadaEvento.class, false);
+        deserializer.addTrustedPackages("br.com.fiap.techchallenge.notificacao");
+        return new DefaultKafkaConsumerFactory<>(consumerConfigs(), new StringDeserializer(), deserializer);
     }
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, Object> kafkaListenerContainerFactory(){
-        ConcurrentKafkaListenerContainerFactory<String, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
+    public ConcurrentKafkaListenerContainerFactory<String, ConsultaCriadaEvento> kafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, ConsultaCriadaEvento> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
-        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL);
+        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.RECORD);
         return factory;
     }
-
 }

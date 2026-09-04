@@ -18,7 +18,9 @@ public class ConsultaKafkaConsumer {
 
     @KafkaListener(
             topics = "consulta.criada.v1",
-            groupId = "notificacao_criacao_consulta")
+            groupId = "notificacao-consumer-v1",
+            containerFactory = "kafkaListenerContainerFactory"
+    )
     public void consumirEventoConsultaCriada(ConsultaCriadaEvento evento) {
         LOGGER.info("Evento de consulta criada consumido: {}", evento);
         notificacaoOrquestradorService.processarEventoConsultaCriada(evento);
