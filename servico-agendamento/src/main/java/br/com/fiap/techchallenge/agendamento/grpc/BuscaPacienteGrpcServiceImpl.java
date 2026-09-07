@@ -6,6 +6,7 @@ import br.com.fiap.techchallenge.agendamento.repository.PacienteRepository;
 import br.com.fiap.techchallenge.contratos.paciente.v1.BuscaPacienteByIdGrpc;
 import br.com.fiap.techchallenge.contratos.paciente.v1.DadosDoPacienteResponse;
 import br.com.fiap.techchallenge.contratos.paciente.v1.ObterDadosDoPacienteRequest;
+import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import net.devh.boot.grpc.server.service.GrpcService;
 import org.slf4j.Logger;
@@ -26,8 +27,23 @@ public class BuscaPacienteGrpcServiceImpl extends BuscaPacienteByIdGrpc.BuscaPac
     @Override
     public void obterDadosDoPaciente(ObterDadosDoPacienteRequest request, StreamObserver<DadosDoPacienteResponse> responseObserver) {
         log.info("Obtendo dados do paciente com id={}", request.getPacienteId());
-        Paciente paciente = pacienteRepository.findById(UUID.fromString(request.getPacienteId()))
-                .orElseThrow(() -> new RuntimeException("Paciente não encontrado"));
+        UUID pacienteId;
+        try {
+            pacienteId = UUID.fromString(request.getPacienteId());
+        } catch (IllegalArgumentException exception) {
+            responseObserver.onError(Status.INVALID_ARGUMENT
+                    .withDescription("pacienteId deve ser um UUID válido")
+                    .asRuntimeException());
+            return;
+        }
+
+        Paciente paciente = pacienteRepository.findById(pacienteId).orElse(null);
+        if (paciente == null) {
+            responseObserver.onError(Status.NOT_FOUND
+                    .withDescription("Paciente não encontrado")
+                    .asRuntimeException());
+            return;
+        }
         responseObserver.onNext(EntityMapperUtil.toResponse(paciente));
         responseObserver.onCompleted();
     }

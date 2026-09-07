@@ -21,18 +21,25 @@ spring:
       properties:
         spring.json.trusted.packages: br.com.fiap.techchallenge.notificacao
         spring.json.use.type.headers: false
-        spring.json.value.default.type: br.com.fiap.techchallenge.notificacao.dto.ConsultaCriadaEvento
+        spring.json.value.default.type: br.com.fiap.techchallenge.notificacao.dto.ConsultaEvento
     listener:
       ack-mode: record
 
 server:
   port: ${SERVER_PORT:8082}
 
+app:
+  grpc:
+    paciente:
+      host: ${PACIENTE_GRPC_HOST:localhost}
+      port: ${PACIENTE_GRPC_PORT:6565}
+      deadline-millis: ${PACIENTE_GRPC_DEADLINE_MILLIS:2000}
+
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
   endpoint:
     health:
       probes:

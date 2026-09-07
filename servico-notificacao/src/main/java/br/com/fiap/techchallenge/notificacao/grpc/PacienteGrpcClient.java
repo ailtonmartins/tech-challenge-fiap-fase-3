@@ -7,6 +7,7 @@ import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
+import org.springframework.beans.factory.annotation.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -18,9 +19,18 @@ public class PacienteGrpcClient {
     private static final Logger log = LoggerFactory.getLogger(PacienteGrpcClient.class);
     private ManagedChannel channel;
     private BuscaPacienteByIdGrpc.BuscaPacienteByIdBlockingStub blockingStub;
+    private final String host;
+    private final int port;
+    private final long deadlineMillis;
 
-    private String host = "localhost";
-    private int port = 6565;
+    public PacienteGrpcClient(
+            @Value("${app.grpc.paciente.host:localhost}") String host,
+            @Value("${app.grpc.paciente.port:6565}") int port,
+            @Value("${app.grpc.paciente.deadline-millis:2000}") long deadlineMillis) {
+        this.host = host;
+        this.port = port;
+        this.deadlineMillis = deadlineMillis;
+    }
 
     @PostConstruct
     public void init() {
@@ -28,14 +38,16 @@ public class PacienteGrpcClient {
                 .usePlaintext()
                 .build();
         blockingStub = BuscaPacienteByIdGrpc.newBlockingStub(channel);
-        log.info("gRPC client connected to {}:{}", host, port);
+        log.info("gRPC client configured for {}:{} with deadline {} ms", host, port, deadlineMillis);
     }
 
     public DadosDoPacienteResponse obterDadosDoPaciente(String pacienteId) {
         ObterDadosDoPacienteRequest req = ObterDadosDoPacienteRequest.newBuilder()
                 .setPacienteId(pacienteId)
                 .build();
-        return blockingStub.obterDadosDoPaciente(req);
+        return blockingStub
+                .withDeadlineAfter(deadlineMillis, TimeUnit.MILLISECONDS)
+                .obterDadosDoPaciente(req);
     }
 
     @PreDestroy

@@ -16,4 +16,5 @@ COPY --from=build /workspace/servico-agendamento/build/libs/app.jar app.jar
 USER appuser
 
 EXPOSE 8080
+EXPOSE 6565
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
