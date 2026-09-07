@@ -1,6 +1,7 @@
 package br.com.fiap.techchallenge.notificacao.service.impl;
 
 import br.com.fiap.techchallenge.notificacao.service.NotificacaoService;
+import br.com.fiap.techchallenge.notificacao.dto.LembreteConsulta;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -11,7 +12,8 @@ public class NotificacaoEmailService implements NotificacaoService {
     private static final Logger LOGGER = LoggerFactory.getLogger(NotificacaoEmailService.class);
 
     @Override
-    public void enviarNotificacao(String nome, String email) {
-        LOGGER.info("Enviando notificação para paciente {} referente à consulta médica no email {} ", nome, email);
+    public void enviarNotificacao(LembreteConsulta lembrete, String email) {
+        LOGGER.info("Lembrete por e-mail preparado: eventId={}, consultaId={}, profissional={}, especialidade={}, dataHora={}",
+                lembrete.eventId(), lembrete.consultaId(), lembrete.medico(), lembrete.especialidade(), lembrete.dataHoraFormatada());
     }
 }
