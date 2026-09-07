@@ -112,12 +112,17 @@ class ConsultaServiceTest {
         when(consultaRepository.findById(consulta.getId())).thenReturn(Optional.of(consulta));
         when(consultaRepository.existsByPacienteIdAndDataHoraAndIdNot(pacienteId, request.dataHora(), consulta.getId())).thenReturn(false);
         when(pacienteRepository.findById(pacienteId)).thenReturn(Optional.of(paciente));
-        when(consultaRepository.save(consulta)).thenReturn(consulta);
+        when(consultaRepository.saveAndFlush(consulta)).thenAnswer(invocation -> {
+            ReflectionTestUtils.setField(consulta, "version", request.version() + 1);
+            return consulta;
+        });
 
         ConsultaResponse response = consultaService.atualizar(consulta.getId(), request, authentication());
 
         assertEquals("Neurologia", response.especialidade());
         assertEquals(request.dataHora(), response.dataHora());
+        assertEquals(request.version() + 1, response.version());
+        verify(consultaRepository).saveAndFlush(consulta);
         ArgumentCaptor<ConsultaAtualizadaEvent> eventCaptor = ArgumentCaptor.forClass(ConsultaAtualizadaEvent.class);
         verify(eventPublisher).publishEvent(eventCaptor.capture());
         ConsultaAtualizadaEvento evento = eventCaptor.getValue().evento();

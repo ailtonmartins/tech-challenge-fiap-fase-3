@@ -89,7 +89,7 @@ public class ConsultaService {
                 request.especialidade().trim(),
                 request.dataHora(),
                 normalizarObservacoes(request.observacoes()));
-        Consulta consultaAtualizada = consultaRepository.save(consulta);
+        Consulta consultaAtualizada = consultaRepository.saveAndFlush(consulta);
 
         eventPublisher.publishEvent(new ConsultaAtualizadaEvent(criarEventoAtualizado(consultaAtualizada, paciente)));
         return ConsultaResponse.from(consultaAtualizada);
