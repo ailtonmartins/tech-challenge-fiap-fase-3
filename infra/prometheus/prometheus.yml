@@ -1,0 +1,19 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: servico-agendamento
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["servico-agendamento:8080"]
+
+  - job_name: servico-historico
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["servico-historico:8081"]
+
+  - job_name: servico-notificacao
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["servico-notificacao:8082"]
