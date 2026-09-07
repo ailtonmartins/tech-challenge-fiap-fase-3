@@ -220,6 +220,7 @@ acesse:
 | Grafana | http://127.0.0.1:3000 | Criar e visualizar dashboards |
 | Loki | http://127.0.0.1:3100 | API local de consulta de logs |
 | Grafana Alloy | http://127.0.0.1:12345 | Diagnóstico do coletor de logs |
+| Kafka Exporter | http://127.0.0.1:9308/metrics | Métricas de tópicos, grupos consumidores e lag |
 
 O login inicial do Grafana é `admin` / `admin`, configurável por
 `GRAFANA_ADMIN_USER` e `GRAFANA_ADMIN_PASSWORD`. O datasource Prometheus é
@@ -246,6 +247,10 @@ como:
 O Alloy recebe o socket Docker somente para leitura. Em produção, esse acesso
 deve ser isolado em uma rede operacional e concedido ao menor número possível
 de agentes.
+
+O dashboard **Hospital - Mensageria Kafka** apresenta disponibilidade do
+exporter, lag e membros dos grupos consumidores, offsets dos tópicos de consulta
+e os logs Kafka correlatos no Loki.
 
 No Compose de desenvolvimento, `GET /actuator/prometheus` não exige HTTP Basic
 para que o Prometheus interno realize o scrape. Em produção, mantenha a rota

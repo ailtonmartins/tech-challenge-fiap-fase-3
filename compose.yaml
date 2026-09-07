@@ -58,6 +58,17 @@ services:
         condition: service_healthy
     networks: [hospital]
 
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:v1.9.0
+    command:
+      - "--kafka.server=kafka:29092"
+    ports:
+      - "127.0.0.1:9308:9308"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks: [hospital]
+
   prometheus:
     image: prom/prometheus:v3.5.0
     command:
@@ -75,6 +86,8 @@ services:
         condition: service_healthy
       servico-notificacao:
         condition: service_healthy
+      kafka-exporter:
+        condition: service_started
     networks: [hospital]
 
   loki:

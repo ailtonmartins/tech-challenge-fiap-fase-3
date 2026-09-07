@@ -1,0 +1,66 @@
+{
+  "uid": "mensageria-kafka-hospital",
+  "title": "Hospital - Mensageria Kafka",
+  "tags": ["hospital", "kafka", "mensageria", "prometheus", "loki"],
+  "timezone": "browser",
+  "schemaVersion": 41,
+  "version": 1,
+  "refresh": "15s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Kafka Exporter disponível",
+      "datasource": "Prometheus",
+      "targets": [{ "refId": "A", "expr": "max(up{job=\"kafka-exporter\"})" }],
+      "fieldConfig": { "defaults": { "mappings": [{ "type": "value", "options": { "0": { "text": "Indisponível", "color": "red" }, "1": { "text": "Disponível", "color": "green" } } }], "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] } }, "overrides": [] },
+      "gridPos": { "h": 7, "w": 6, "x": 0, "y": 0 }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Lag total dos consumidores",
+      "datasource": "Prometheus",
+      "targets": [{ "refId": "A", "expr": "sum(kafka_consumergroup_lag_sum{topic=~\"consulta\\\\..*\"})" }],
+      "fieldConfig": { "defaults": { "min": 0, "unit": "short", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 10 }, { "color": "red", "value": 100 }] } }, "overrides": [] },
+      "gridPos": { "h": 7, "w": 6, "x": 6, "y": 0 }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Lag por grupo e tópico",
+      "datasource": "Prometheus",
+      "targets": [{ "refId": "A", "expr": "sum by (consumergroup, topic) (kafka_consumergroup_lag_sum{topic=~\"consulta\\\\..*\"})", "legendFormat": "{{consumergroup}} · {{topic}}" }],
+      "fieldConfig": { "defaults": { "min": 0, "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 0 }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Membros por grupo consumidor",
+      "datasource": "Prometheus",
+      "targets": [{ "refId": "A", "expr": "kafka_consumergroup_members{consumergroup=~\"(historico|notificacao)-consumer-v1\"}", "legendFormat": "{{consumergroup}}" }],
+      "fieldConfig": { "defaults": { "min": 0, "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 7 }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Offsets atuais dos tópicos de consulta",
+      "datasource": "Prometheus",
+      "targets": [{ "refId": "A", "expr": "sum by (topic) (kafka_topic_partition_current_offset{topic=~\"consulta\\\\..*\"})", "legendFormat": "{{topic}}" }],
+      "fieldConfig": { "defaults": { "min": 0, "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 9 }
+    },
+    {
+      "id": 6,
+      "type": "logs",
+      "title": "Eventos Kafka nos serviços",
+      "datasource": "Loki",
+      "targets": [{ "refId": "A", "expr": "{service_name=~\".*servico-(agendamento|historico|notificacao).*\"} |~ \"(Kafka|kafka|Evento|evento|Falha|falha)\"" }],
+      "options": { "dedupStrategy": "none", "enableLogDetails": true, "showCommonLabels": false, "showLabels": true, "sortOrder": "Descending", "wrapLogMessage": true },
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 18 }
+    }
+  ]
+}
