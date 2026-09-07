@@ -29,7 +29,9 @@ flowchart LR
     P[(PostgreSQL\nschema agendamento)] --- A
     PH[(PostgreSQL\nschema historico)] --- H
     U -->|HTTP Basic + GraphQL| H
-    K -. evolução: US-11 .-> N[Notificações :8082]
+    K -->|evento: consulta, paciente e horário| N[Notificações :8082]
+    N -->|gRPC interno :6565\nDados atuais do paciente| A
+    N -->|lembrete: paciente, profissional,\nespecialidade e data/hora BRT| C[Email, SMS e WhatsApp simulados]
 ```
 
 O histórico é uma projeção de leitura com consistência eventual. Depois de
@@ -134,141 +136,50 @@ query {
 | Ambiente e acesso | US-01, US-01A, US-01B, US-02, US-03 | Docker Compose, health checks e Postman |
 | Agendamento | US-04, US-05, US-06, US-07 | API REST em `:8080` e Kafka UI |
 | Histórico | US-08, US-09, US-10 | GraphQL em `:8081` |
-| Próximas etapas | US-11 a US-18 | Roteiro de evolução abaixo |
+| Notificações, qualidade e entrega | US-11 a US-18 | Kafka UI, gRPC interno, testes, Postman e documentação |
 
 Para os requests prontos, importe
 [`postman/Tech-Challenge-Fase-3.postman_collection.json`](../postman/Tech-Challenge-Fase-3.postman_collection.json).
 
-## 7. Roteiro de evolução — US-11 a US-18
+## 7. Notificações e consulta de paciente por gRPC
 
-Esta seção organiza a próxima etapa de implementação e apresentação. No estado
-atual, o contrato Protobuf da US-12 já existe, mas o consumidor de notificações
-e o servidor gRPC ainda não foram implementados. Portanto, a porta `9090` não
-deve ser usada como se já estivesse disponível.
-
-```mermaid
-flowchart LR
-    A[US-11\nConsumir evento Kafka] --> G[US-12\nConsultar Histórico por gRPC]
-    G --> L[US-13\nPersistir e simular lembrete]
-    L --> R[US-14\nRetentativas e DLT]
-    R --> O[US-15\nMétricas e logs]
-    O --> T[US-16\nTestes de integração]
-    T --> P[US-17\nCollection Postman]
-    P --> D[US-18\nDocumentação final]
-```
-
-### US-11 — Consumir eventos para notificação
-
-1. Criar no `servico-notificacao` um consumidor para os tópicos
-   `consulta.criada.v1` e `consulta.atualizada.v1`.
-2. Configurar o consumer group `notificacao-consumer-v1` e confirmação de
-   offset somente depois do processamento bem-sucedido.
-3. Criar a tabela de notificações no schema `notificacao`, com `eventId` único,
-   para garantir idempotência.
-4. Confirmar no Kafka UI a leitura dos eventos e o consumer group ativo.
-
-Resultado esperado: cada evento válido produz um registro de notificação, sem
-duplicar registros quando a mensagem é reprocessada.
-
-### US-12 — Buscar dados atuais por gRPC
-
-O contrato atual está em
-[`contratos-grpc/src/main/proto/historico_notificacao.proto`](../contratos-grpc/src/main/proto/historico_notificacao.proto).
-Ele define o serviço interno `HistoricoNotificacaoService` e a operação
-`ObterDadosDoLembrete`:
+O `servico-notificacao` consome os eventos de consulta com o consumer group
+`notificacao-consumer-v1`. Para cada evento processado, ele busca os dados
+atuais do paciente no `servico-agendamento` por gRPC e só então aciona os
+canais de notificação. Assim, nome, e-mail e telefone não precisam viajar no
+evento Kafka nem ser buscados diretamente no banco de outro serviço.
+O lembrete inclui nome do paciente, profissional, especialidade e data/hora em
+`America/Sao_Paulo`; consultas passadas, canceladas ou realizadas não são
+enviadas.
 
 ```mermaid
 sequenceDiagram
     participant K as Kafka
     participant N as Notificações
-    participant H as Histórico gRPC :9090
-    participant DB as Banco histórico
+    participant A as Agendamento gRPC :6565
 
-    K->>N: Evento com consultaId
-    N->>H: ObterDadosDoLembrete(consultaId)
-    H->>DB: Ler projeção atual
-    DB-->>H: Dados mínimos do lembrete
-    H-->>N: consulta, paciente, profissional e data/hora
-    N-->>K: Confirma offset após persistir a notificação
+    K->>N: Evento com consulta, paciente, profissional e data/hora
+    N->>A: ObterDadosDoPaciente(pacienteId)
+    A-->>N: id, nome, e-mail e telefone
+    N->>N: Monta lembrete em America/Sao_Paulo
+    N->>N: Simula e registra o resultado por eventId e consultaId
 ```
 
-Sequência de implementação:
+O contrato está em
+[`contratos-grpc/src/main/proto/pacientes.proto`](../contratos-grpc/src/main/proto/pacientes.proto)
+e define `BuscaPacienteById.ObterDadosDoPaciente`. A chamada recebe
+`pacienteId` e retorna somente `pacienteId`, nome, e-mail e telefone. A porta
+`6565` é interna à rede Docker; no ambiente local de demonstração ela também é
+publicada somente em `127.0.0.1:6565` para o teste gRPC pelo Postman.
 
-1. Adicionar o servidor gRPC ao `servico-historico`, na porta interna `9090`,
-   implementando `ObterDadosDoLembrete`.
-2. Consultar a projeção `ConsultaHistorico` pelo `consultaId`; retornar somente
-   `consultaId`, nome/e-mail do paciente, profissional, especialidade,
-   data/hora e status.
-3. Configurar o cliente do `servico-notificacao` com o stub gerado pelo módulo
-   `contratos-grpc`, deadline configurável, retentativas limitadas e circuit
-   breaker.
-4. Proteger a comunicação interna com autenticação adequada e expor `9090`
-   apenas na rede interna do Docker Compose, nunca ao cliente final.
-5. Manter o offset Kafka pendente enquanto a consulta gRPC ou a persistência da
-   notificação falhar.
+Para demonstrar o fluxo, crie ou altere uma consulta no passo 2, espere o
+consumo e confira no Kafka UI o grupo `notificacao-consumer-v1`. O gRPC é uma
+integração interna. Para exercitar o servidor localmente no Postman, importe o
+contrato canônico [`pacientes.proto`](../contratos-grpc/src/main/proto/pacientes.proto)
+e siga o roteiro em [`postman/README.md`](../postman/README.md).
 
-Depois de implementar e iniciar a US-12, valide manualmente com:
+Execute todos os testes com:
 
 ```bash
-grpcurl -plaintext \
-  -import-path contratos-grpc/src/main/proto \
-  -proto historico_notificacao.proto \
-  -d '{"consulta_id":"30000000-0000-0000-0000-000000000001"}' \
-  localhost:9090 \
-  fiap.techchallenge.historico.v1.HistoricoNotificacaoService/ObterDadosDoLembrete
+./gradlew test
 ```
-
-> O comando é um roteiro futuro: antes da implementação da US-12, a conexão a
-> `localhost:9090` deve falhar porque não há servidor gRPC exposto.
-
-### US-13 — Gerar o lembrete
-
-1. Formatar o lembrete com nome do paciente, profissional, especialidade e
-   data/hora no fuso configurado.
-2. Persistir o resultado com status `RECEBIDA`, `ENVIADA` ou `FALHA`.
-3. Na primeira versão, simular o envio por log; não incluir observações
-   médicas no texto ou no log.
-
-### US-14 — Falhas, retentativas e DLT
-
-1. Aplicar backoff para falhas transitórias no consumidor Kafka e no cliente
-   gRPC.
-2. Não repetir indefinidamente falhas de validação ou dados inválidos.
-3. Após o limite, publicar a mensagem em um tópico `.DLT` e registrar
-   `eventId`, `consultaId` e o motivo da falha.
-4. Documentar no README como inspecionar e reprocessar uma DLT pelo Kafka UI.
-
-### US-15 — Saúde e observabilidade
-
-1. Validar `GET /actuator/health` em todos os serviços.
-2. Incluir logs estruturados com serviço, `eventId`, `consultaId` e resultado,
-   sem dados sensíveis.
-3. Expor métricas para publicação, consumo, falhas, retentativas e lag dos
-   consumer groups.
-
-### US-16 — Testes críticos
-
-Execute `./gradlew test` como verificação mínima. Na evolução, acrescentar:
-
-- integração PostgreSQL e Kafka com Testcontainers;
-- integração GraphQL para histórico;
-- integração gRPC para `ObterDadosDoLembrete`;
-- cenários de `401`, `403`, validação, idempotência, DLT e paciente tentando
-  acessar dados de outra pessoa.
-
-### US-17 — Collection Postman
-
-Atualizar a collection com health checks, as três credenciais de demonstração,
-cenários de acesso negado e evidências de mensageria. O gRPC não é executado
-diretamente pelo Postman; manter o comando `grpcurl` como evidência do contrato
-e do endpoint interno.
-
-### US-18 — Fechamento da documentação
-
-Antes da entrega, revisar README, collection e este roteiro para documentar:
-
-- contratos REST, GraphQL, Kafka e gRPC;
-- consistência eventual da projeção de histórico;
-- autenticação, autorização e proteção de dados;
-- timeouts, circuit breaker, retentativas, DLT e procedimento de reprocessamento;
-- ausência de credenciais reais no repositório.

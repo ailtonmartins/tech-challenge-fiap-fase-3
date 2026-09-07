@@ -5,16 +5,16 @@ e envio de lembretes. A solução usa Java 21, Spring Boot, PostgreSQL e Kafka.
 
 ## Estado atual
 
-A infraestrutura local da **US-01** está disponível: três aplicações Spring
-Boot com Actuator, um PostgreSQL com schemas isolados por serviço, Kafka em
-modo KRaft e Kafka UI. As regras de negócio, segurança, GraphQL, eventos e
-gRPC serão implementados nas próximas histórias.
+As histórias de usuário estão implementadas. A solução reúne agendamento REST,
+histórico GraphQL, eventos Kafka e notificações. Quando recebe um evento de
+consulta, o serviço de notificações consulta os dados atuais do paciente via
+gRPC no serviço de agendamento antes de acionar os canais de notificação.
 
 ## Arquitetura inicial
 
 ```text
 Cliente
-  ├─ servico-agendamento  :8080 ── PostgreSQL :5432 / schema agendamento
+  ├─ servico-agendamento  :8080 (gRPC interno :6565) ── PostgreSQL :5432 / schema agendamento
   ├─ servico-historico    :8081 ──── PostgreSQL :5432 / schema historico
   └─ servico-notificacao  :8082 ─── PostgreSQL :5432 / schema notificacao
 
@@ -209,10 +209,72 @@ vinculado ao usuário autenticado e não aceita `pacienteId`. Ela aceita o filtr
 `somenteFuturas`; sua resposta não expõe o identificador do paciente. A
 collection em [`postman/`](postman/) contém os exemplos executáveis.
 
-O script gRPC nessa pasta é um cenário preparado para a US-12: o contrato já
-existe, mas o servidor gRPC será disponibilizado nessa próxima história.
+## Observabilidade
+
+O ambiente local inclui Prometheus e Grafana. Após `docker compose up --build`,
+acesse:
+
+| Recurso | Endereço | Finalidade |
+|---|---|---|
+| Prometheus | http://127.0.0.1:9090 | Consultar alvos e séries de métricas |
+| Grafana | http://127.0.0.1:3000 | Criar e visualizar dashboards |
+| Loki | http://127.0.0.1:3100 | API local de consulta de logs |
+| Grafana Alloy | http://127.0.0.1:12345 | Diagnóstico do coletor de logs |
+
+O login inicial do Grafana é `admin` / `admin`, configurável por
+`GRAFANA_ADMIN_USER` e `GRAFANA_ADMIN_PASSWORD`. O datasource Prometheus é
+provisionado automaticamente, assim como o dashboard **Hospital - Visão dos
+Serviços**. Os três serviços expõem métricas em suas redes
+internas nos endpoints `/actuator/prometheus`; o Prometheus as coleta a cada
+15 segundos. Esses endpoints não são publicados no host.
+
+Os logs dos containers são coletados pelo Grafana Alloy e enviados ao Loki. No
+Grafana, abra o dashboard **Hospital - Visão dos Serviços** para o painel
+consolidado ou os dashboards **Hospital - Agendamento - Logs**, **Hospital -
+Histórico - Logs** e **Hospital - Notificação - Logs** para consultar cada
+serviço separadamente. Também é possível usar **Explore > Loki** com consultas
+como:
+
+```logql
+{service_name=~".*servico-notificacao.*"}
+```
+
+```logql
+{service_name=~".*servico-.*"} |= "eventId="
+```
+
+O Alloy recebe o socket Docker somente para leitura. Em produção, esse acesso
+deve ser isolado em uma rede operacional e concedido ao menor número possível
+de agentes.
+
+No Compose de desenvolvimento, `GET /actuator/prometheus` não exige HTTP Basic
+para que o Prometheus interno realize o scrape. Em produção, mantenha a rota
+em rede operacional privada ou proteja-a com autenticação compatível com o
+coletor; não exponha endpoints de gerenciamento na internet.
+
+Consultas úteis no Prometheus:
+
+```promql
+up
+sum by (job) (rate(http_server_requests_seconds_count[5m]))
+sum by (job) (jvm_memory_used_bytes)
+```
+
+## Consulta de paciente por gRPC
+
+O serviço de notificações consome eventos de consulta e, durante o
+processamento, chama o serviço interno
+`BuscaPacienteById.ObterDadosDoPaciente` do agendamento. O contrato está em
+[`contratos-grpc/src/main/proto/pacientes.proto`](contratos-grpc/src/main/proto/pacientes.proto)
+e recebe `pacienteId`, retornando apenas identificador, nome, e-mail e telefone
+do paciente. A porta gRPC `6565` é destinada exclusivamente à comunicação
+entre serviços na rede Docker; ela não substitui APIs REST ou GraphQL e não é
+exposta ao cliente final.
 
 ## Estrutura
+
+O roteiro visual para navegar e demonstrar os fluxos disponíveis está em
+[docs/ROTEIRO_NAVEGACAO.md](docs/ROTEIRO_NAVEGACAO.md).
 
 ```text
 .

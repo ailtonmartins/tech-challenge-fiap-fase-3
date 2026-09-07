@@ -4,11 +4,9 @@
 
 Este documento apresenta um roteiro completo para construir o Tech Challenge da Fase 3: um backend hospitalar seguro, modular e orientado a eventos, capaz de agendar consultas, consultar o histórico de pacientes e enviar notificações assíncronas.
 
-> **Estado da implementação em 19/08/2026:** as US-01, US-01B, US-02,
-> US-04 a US-08 e US-01A estão implementadas. A autorização de gerenciamento
-> da US-03 também está pronta; as consultas de histórico dependem das US-09 e
-> US-10. Ainda faltam GraphQL, gRPC, notificações, DLT, métricas e os testes
-> de integração previstos nas etapas posteriores.
+> **Estado da implementação:** todas as histórias de usuário foram
+> implementadas. O fluxo de notificação consulta os dados atuais do paciente
+> no serviço de agendamento por gRPC depois de consumir o evento Kafka.
 
 O projeto será desenvolvido com Java e Spring Boot e aplicará os conteúdos estudados no curso:
 
@@ -48,7 +46,7 @@ O escopo mínimo da solução será:
 - O histórico será um serviço independente, responsável por materializar as alterações de consultas e disponibilizá-las por GraphQL.
 - Será usado Apache Kafka, com tópicos versionados, grupos de consumidores, retentativas e tópicos de dead letter (DLT).
 - O envio de lembrete poderá ser inicialmente simulado por log e persistido no banco. Como evolução, poderá ser integrado ao MailHog ou a um provedor de e-mail.
-- gRPC será usado somente para comunicação síncrona interna: após receber um evento Kafka, o serviço de notificações consulta o serviço de histórico para obter os dados atuais do lembrete. A API GraphQL continua destinada aos clientes, e Kafka continua sendo a integração assíncrona.
+- gRPC é usado somente para comunicação síncrona interna: após receber um evento Kafka, o serviço de notificações consulta o serviço de agendamento para obter os dados atuais do paciente. A API GraphQL continua destinada aos clientes, e Kafka continua sendo a integração assíncrona.
 
 ### Critérios de pronto
 
@@ -72,38 +70,16 @@ instância PostgreSQL com schemas isolados (`agendamento`, `historico` e
 schemas podem ser separados em instâncias físicas conforme a necessidade.
 
 ```text
-Cliente/Postman
-      |
-      | HTTP Basic
-      v
-+--------------------------+
-| servico-agendamento      |
-| - usuários               |
-| - pacientes              |
-| - consultas              |
-| - autorização            |
-| - produtor Kafka         |
-+------------+-------------+
-             |
-             | tópicos consulta.criada.v1
-             |         consulta.atualizada.v1
-             v
-+--------------------------+       +--------------------------+
-| Apache Kafka             |------>| servico-historico         |
-| - tópicos                |       | - consumidor Kafka        |
-| - consumer groups        |       | - histórico materializado |
-| - DLT                    |       | - API GraphQL             |
-|                          |       | - servidor gRPC           |
-+-------------+------------+       +-------------+------------+
-              |                                  |
-              v                                  | gRPC interno
-+--------------------------+<---------------------+
-| servico-notificacao      |
-| - consumidor Kafka       |
-| - cliente gRPC           |
-| - lembretes              |
-| - idempotência           |
-+--------------------------+
+Cliente/Postman -- HTTP Basic --> servico-agendamento :8080
+                                  |      |
+                                  |      +-- gRPC interno :6565 (dados do paciente)
+                                  |                              ^
+                                  |                              |
+                                  v                              |
+Kafka <--- consulta.criada.v1 / consulta.atualizada.v1 --- servico-notificacao :8082
+  |                                                          |
+  +------------------------------> servico-historico :8081   +-- cliente gRPC
+                                     (GraphQL)
 ```
 
 ### Responsabilidades
@@ -123,12 +99,11 @@ Cliente/Postman
 - manter uma projeção própria do histórico de consultas;
 - disponibilizar consultas e consultas futuras por GraphQL;
 - aplicar autorização e garantir que pacientes leiam apenas a própria projeção.
-- expor um contrato gRPC interno com os dados mínimos para lembretes.
 
 #### Serviço de notificações
 
 - consumir eventos de consulta criada ou atualizada pelo Kafka;
-- consultar o serviço de histórico por gRPC para obter os dados atuais do lembrete;
+- consultar o serviço de agendamento por gRPC para obter os dados atuais do paciente;
 - validar e processar a mensagem;
 - impedir notificações duplicadas;
 - registrar o lembrete enviado;
@@ -144,7 +119,7 @@ Cliente/Postman
 | PostgreSQL (schemas `agendamento`, `historico` e `notificacao`) | 5432 |
 | Kafka | 9092 |
 | Kafka UI (opcional) | 8085 |
-| gRPC do serviço de histórico | 9090 |
+| gRPC interno do serviço de agendamento | 6565 |
 
 ---
 
@@ -209,7 +184,7 @@ tech-challenge-fase-3/
 │   └── build.gradle
 ├── contratos-grpc/
 │   ├── src/main/proto/
-│   │   └── historico_notificacao.proto
+│   │   └── pacientes.proto
 │   └── build.gradle
 ├── postman/
 │   ├── Tech-Challenge-Fase-3.postman_collection.json
@@ -289,8 +264,7 @@ servico-historico/
 ├── src/main/java/br/com/fiap/techchallenge/historico/
 │   ├── HistoricoApplication.java
 │   ├── controller/
-│   │   ├── HistoricoGraphqlController.java
-│   │   └── HistoricoGrpcController.java
+│   │   └── HistoricoGraphqlController.java
 │   ├── service/
 │   │   ├── HistoricoService.java
 │   │   └── KafkaConsumerService.java
@@ -300,12 +274,10 @@ servico-historico/
 │   │   ├── ConsultaHistorico.java
 │   │   └── StatusConsulta.java
 │   ├── dto/
-│   │   ├── ConsultaHistoricoResponse.java
-│   │   └── DadosDoLembreteResponse.java
+│   │   └── ConsultaHistoricoResponse.java
 │   ├── config/
 │   │   ├── SecurityConfig.java
-│   │   ├── KafkaConfig.java
-│   │   └── GrpcConfig.java
+│   │   └── KafkaConfig.java
 │   └── exception/
 │       └── GraphqlExceptionHandler.java
 ```
@@ -321,7 +293,7 @@ servico-notificacao/
     ├── service/
     │   ├── NotificacaoService.java
     │   ├── KafkaConsumerService.java
-    │   └── HistoricoGrpcClient.java
+    │   └── PacienteGrpcClient.java
     ├── repository/
     │   └── NotificacaoRepository.java
     ├── model/
@@ -576,7 +548,7 @@ Não confiar em um `pacienteId` enviado pelo paciente. O identificador deve ser 
 
 ## 9. Criar o serviço de histórico e a API GraphQL
 
-Gerar o `servico-historico` com Spring Web, Spring for GraphQL, Spring Security, Spring Data JPA, PostgreSQL Driver, Flyway, Spring for Apache Kafka, gRPC com Protobuf, Validation, Actuator e Testcontainers.
+Gerar o `servico-historico` com Spring Web, Spring for GraphQL, Spring Security, Spring Data JPA, PostgreSQL Driver, Flyway, Spring for Apache Kafka, Validation, Actuator e Testcontainers.
 
 O serviço de histórico mantém uma **projeção de leitura**: não é consultado pelo serviço de agendamento e não altera consultas. Ele consome os mesmos eventos publicados pelo agendamento e persiste os dados necessários para consultas rápidas. Essa separação aplica CQRS de forma simples: o agendamento é o lado de escrita e o histórico é o lado de leitura.
 
@@ -599,34 +571,31 @@ O serviço de histórico precisa conhecer os usuários e os vínculos `usuario -
 
 ### Contrato gRPC interno
 
-Manter o contrato Protobuf versionado em `contratos-grpc/src/main/proto/historico_notificacao.proto`. Os módulos `servico-historico` e `servico-notificacao` dependem de `contratos-grpc` e usam os stubs gerados durante o build Gradle. O endpoint gRPC não deve ser exposto ao cliente final nem substituir o GraphQL.
+O contrato Protobuf está versionado em `contratos-grpc/src/main/proto/pacientes.proto`. Os módulos `servico-agendamento` e `servico-notificacao` dependem de `contratos-grpc` e usam os stubs gerados durante o build Gradle. O endpoint gRPC do agendamento usa a porta interna `6565`; ele não deve ser exposto ao cliente final nem substituir REST ou GraphQL.
 
 ```proto
 syntax = "proto3";
 
 package fiap.techchallenge.historico.v1;
 
-service HistoricoNotificacaoService {
-  rpc ObterDadosDoLembrete(ObterDadosDoLembreteRequest)
-      returns (DadosDoLembreteResponse);
+service BuscaPacienteById {
+  rpc ObterDadosDoPaciente(ObterDadosDoPacienteRequest)
+      returns (DadosDoPacienteResponse);
 }
 
-message ObterDadosDoLembreteRequest {
-  string consulta_id = 1;
+message ObterDadosDoPacienteRequest {
+  string paciente_id = 1;
 }
 
-message DadosDoLembreteResponse {
-  string consulta_id = 1;
+message DadosDoPacienteResponse {
+  string paciente_id = 1;
   string paciente_nome = 2;
   string paciente_email = 3;
-  string medico = 4;
-  string especialidade = 5;
-  string data_hora = 6;
-  string status = 7;
+  string paciente_telefone = 4;
 }
 ```
 
-O servidor deve retornar somente dados necessários ao lembrete. Aplicar timeout curto, validação de `consulta_id` e autenticação de serviço para serviço (por exemplo, mTLS em produção); não reutilizar a autenticação HTTP Basic do usuário final nesse canal.
+O servidor retorna somente os dados do paciente necessários à notificação. Validar `paciente_id` e manter a comunicação na rede interna entre serviços; não reutilizar a autenticação HTTP Basic do usuário final nesse canal.
 
 ### Tipos sugeridos
 
@@ -847,8 +816,8 @@ Campos sugeridos:
 2. validar versão e campos obrigatórios;
 3. consultar `eventId` no banco;
 4. ignorar de forma segura se o evento já foi processado;
-5. chamar `HistoricoNotificacaoService.ObterDadosDoLembrete` por gRPC;
-6. montar o texto do lembrete com a resposta atual;
+5. chamar `BuscaPacienteById.ObterDadosDoPaciente` por gRPC;
+6. montar e direcionar o lembrete com os dados atuais do paciente;
 7. enviar ou simular a notificação;
 8. salvar o resultado;
 9. confirmar o offset somente após o processamento;
@@ -876,10 +845,10 @@ Implementar e documentar:
 - controle de concorrência otimista com `@Version`;
 - health checks para banco e Kafka;
 - deadline e retentativa limitada para a chamada gRPC;
-- circuit breaker no cliente gRPC para impedir sobrecarga quando o histórico estiver indisponível;
+- circuit breaker no cliente gRPC para impedir sobrecarga quando o agendamento estiver indisponível;
 - graceful shutdown para o consumidor terminar mensagens em processamento;
 - limites de pool de conexões e consumidores;
-- circuit breaker com Resilience4j para proteger a chamada gRPC ao serviço de histórico.
+- circuit breaker com Resilience4j para proteger a chamada gRPC ao serviço de agendamento.
 
 Não aplicar retentativas indiscriminadamente. Erros de validação são permanentes e devem ir para o tópico DLT; indisponibilidade temporária de banco ou provedor de e-mail pode ser retentada.
 
@@ -954,7 +923,7 @@ No serviço de histórico:
 No serviço de notificações:
 
 - montagem do lembrete;
-- chamada gRPC bem-sucedida ao histórico;
+- chamada gRPC bem-sucedida ao agendamento para obter os dados do paciente;
 - timeout ou indisponibilidade gRPC, com retentativa e abertura do circuit breaker;
 - processamento de evento válido;
 - idempotência para evento duplicado;
@@ -1254,7 +1223,7 @@ A apresentação pode seguir esta ordem:
 3. autenticar como enfermeiro e criar uma consulta;
 4. mostrar o endpoint REST de criação respondendo com sucesso;
 5. mostrar o evento publicado no tópico Kafka e os dois consumer groups processando-o;
-6. mostrar a chamada gRPC do serviço de notificações para o histórico;
+6. mostrar a chamada gRPC do serviço de notificações para o agendamento;
 7. mostrar a notificação persistida ou enviada;
 8. autenticar como médico e editar a consulta;
 9. consultar o histórico via GraphQL;
