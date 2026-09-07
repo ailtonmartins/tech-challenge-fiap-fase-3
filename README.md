@@ -79,9 +79,10 @@ expor senha, hash ou detalhes internos. O health check permanece público.
 
 ## Massa de desenvolvimento
 
-Com o perfil `dev` ativo, o Flyway executa a migration de massa de
-desenvolvimento. O `compose.yaml` já ativa esse perfil; nos perfis `test` e
-`prod`, essa migration não faz parte dos locais de migration do Flyway.
+Com o perfil `dev` ativo, o Flyway executa as migrations de massa de
+desenvolvimento nos três serviços. O `compose.yaml` já ativa esse perfil; nos
+perfis `test` e `prod`, essas migrations não fazem parte dos locais de
+migration do Flyway.
 
 As senhas de demonstração são `fiap-dev-2026` e são gravadas somente como hash
 BCrypt. Os identificadores fixos para testes manuais são:
@@ -95,6 +96,11 @@ BCrypt. Os identificadores fixos para testes manuais são:
 | Consulta futura da Maria | `30000000-0000-0000-0000-000000000001` |
 | Consulta passada da Maria | `30000000-0000-0000-0000-000000000002` |
 | Consulta futura do João | `30000000-0000-0000-0000-000000000003` |
+
+O histórico recebe uma projeção das três consultas acima. O serviço de
+notificação recebe três resultados demonstrativos: `ENVIADA`, `NAO_ENVIADA` e
+`FALHA`, identificados respectivamente pelos `eventId`s terminados em `001`,
+`002` e `003` na faixa `50000000-...`.
 
 A migration Flyway é aplicada uma única vez por banco; as cláusulas
 `ON CONFLICT` também protegem os IDs fixos caso os dados já existam. Por ser
