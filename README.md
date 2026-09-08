@@ -226,8 +226,80 @@ O serviço de histórico expõe `POST http://localhost:8081/graphql`. As queries
 `errors[].extensions.code`: `FORBIDDEN`, `NOT_FOUND` ou `VALIDATION_ERROR`.
 A query `minhasConsultas`, exclusiva do perfil `PACIENTE`, determina o paciente
 vinculado ao usuário autenticado e não aceita `pacienteId`. Ela aceita o filtro
-`somenteFuturas`; sua resposta não expõe o identificador do paciente. A
-collection em [`postman/`](postman/) contém os exemplos executáveis.
+`somenteFuturas`; sua resposta não expõe o identificador do paciente.
+
+## Testes manuais com Postman
+
+Importe [`postman/Tech-Challenge-Fase-3.postman_collection.json`](postman/Tech-Challenge-Fase-3.postman_collection.json)
+no Postman. A collection reúne health checks, o fluxo REST de agendamento e as
+queries GraphQL. Execute a pasta **Agendamento - Fluxo principal** na ordem
+indicada.
+
+As requisições de mudança de status são fixas e atualizam automaticamente a
+variável `consultaVersao` com a versão devolvida pela API:
+
+- **4 - Confirmar consulta** — muda para `CONFIRMADA`;
+- **5A - Realizar consulta (após confirmar)** — muda para `REALIZADA`;
+- **5B - Cancelar consulta (após confirmar; alternativa ao 5A)** — muda para
+  `CANCELADA`.
+
+Execute somente **5A** ou **5B** para uma mesma consulta, pois os estados
+`REALIZADA` e `CANCELADA` são finais.
+
+### Teste gRPC — consulta de paciente
+
+O contrato canônico é
+[`contratos-grpc/src/main/proto/pacientes.proto`](contratos-grpc/src/main/proto/pacientes.proto).
+Não há cópia dele na pasta `postman/`, evitando divergência entre o contrato
+executado pela aplicação e o usado no teste.
+
+Com o ambiente Docker em execução:
+
+1. Selecione **New > gRPC** no Postman.
+2. Informe o servidor `127.0.0.1:6565`.
+3. Importe `contratos-grpc/src/main/proto/pacientes.proto` na tela da
+   requisição.
+4. Selecione `BuscaPacienteById > ObterDadosDoPaciente`.
+5. Informe um dos payloads a seguir no editor **Message** e clique em
+   **Invoke**.
+6. Use **Save As** para manter cada cenário em uma collection multiprotocolo.
+
+> A collection JSON contém somente HTTP e GraphQL. Requests gRPC nativos devem
+> ser salvos pelo Postman em uma collection multiprotocolo.
+
+Sucesso:
+
+```json
+{
+  "paciente_id": "20000000-0000-0000-0000-000000000001"
+}
+```
+
+Resultado esperado: `pacienteId`, `pacienteNome`, `pacienteEmail` e
+`pacienteTelefone` de Maria Souza.
+
+Identificador inválido:
+
+```json
+{
+  "paciente_id": "nao-e-uuid"
+}
+```
+
+Resultado esperado: status `INVALID_ARGUMENT`.
+
+Paciente inexistente:
+
+```json
+{
+  "paciente_id": "00000000-0000-0000-0000-000000000099"
+}
+```
+
+Resultado esperado: status `NOT_FOUND`.
+
+O Compose publica a porta somente em `127.0.0.1:6565` no ambiente local; entre
+os containers, a comunicação continua em `servico-agendamento:6565`.
 
 ## Observabilidade
 

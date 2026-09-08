@@ -191,7 +191,7 @@ Para demonstrar o fluxo, crie ou altere uma consulta no passo 2, espere o
 consumo e confira no Kafka UI o grupo `notificacao-consumer-v1`. O gRPC é uma
 integração interna. Para exercitar o servidor localmente no Postman, importe o
 contrato canônico [`pacientes.proto`](../contratos-grpc/src/main/proto/pacientes.proto)
-e siga o roteiro em [`postman/README.md`](../postman/README.md).
+e siga o roteiro em [`README.md — Testes manuais com Postman`](../README.md#testes-manuais-com-postman).
 
 Execute todos os testes com:
 
