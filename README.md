@@ -176,6 +176,20 @@ Consultas `CANCELADA` ou `REALIZADA` não podem ser alteradas. A versão evita
 sobrescrever alterações concorrentes e uma atualização bem-sucedida publica o
 evento `CONSULTA_ATUALIZADA` no tópico `consulta.atualizada.v1`.
 
+Para mudar o ciclo de vida, use `PATCH /api/consultas/{id}/status` com a versão
+atual. São permitidas as transições `AGENDADA → CONFIRMADA/CANCELADA` e
+`CONFIRMADA → REALIZADA/CANCELADA`.
+
+```json
+{
+  "status": "CONFIRMADA",
+  "version": 1
+}
+```
+
+Cada transição incrementa a versão, retorna a nova versão e publica
+`CONSULTA_ATUALIZADA`. Consultas `REALIZADA` e `CANCELADA` são estados finais.
+
 ## Eventos Kafka
 
 Os eventos `CONSULTA_CRIADA` e `CONSULTA_ATUALIZADA` têm `eventId`, tipo,

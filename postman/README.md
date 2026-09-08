@@ -4,6 +4,22 @@ Importe apenas `Tech-Challenge-Fase-3.postman_collection.json` no Postman. Ela
 reúne os health checks, os fluxos REST do agendamento e as queries GraphQL.
 Execute a pasta **Agendamento - Fluxo principal** na ordem indicada.
 
+## Alterar status da consulta
+
+Há três requisições `PATCH` fixas na pasta do fluxo principal: **4 - Confirmar
+consulta**, **5A - Realizar consulta** e **5B - Cancelar consulta**. Todas
+guardam a versão retornada automaticamente na variável `consultaVersao`.
+
+Execute a confirmação antes de escolher uma das alternativas finais:
+
+```text
+AGENDADA → CONFIRMADA ou CANCELADA
+CONFIRMADA → REALIZADA ou CANCELADA
+```
+
+Execute somente **5A** ou **5B** para a mesma consulta: os estados
+`REALIZADA` e `CANCELADA` são finais.
+
 ## Teste gRPC — consulta de paciente
 
 O contrato canônico é

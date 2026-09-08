@@ -38,6 +38,19 @@ O histórico é uma projeção de leitura com consistência eventual. Depois de
 criar ou alterar uma consulta, aguarde alguns instantes antes de consultá-la
 no GraphQL.
 
+O ciclo de vida da consulta é:
+
+```mermaid
+stateDiagram-v2
+    [*] --> AGENDADA
+    AGENDADA --> CONFIRMADA: confirmar
+    AGENDADA --> CANCELADA: cancelar
+    CONFIRMADA --> REALIZADA: realizar
+    CONFIRMADA --> CANCELADA: cancelar
+    REALIZADA --> [*]
+    CANCELADA --> [*]
+```
+
 ## 3. Credenciais de demonstração
 
 Todas as contas usam a senha `fiap-dev-2026` no perfil `dev`.
@@ -58,17 +71,19 @@ O retorno deve ser `200 OK` e informar o perfil `MEDICO`.
 Também execute **Paciente não cria consulta (403)**. Isso demonstra que a
 autorização não está limitada apenas à rota REST.
 
-### Passo 2 — Criar e alterar uma consulta
+### Passo 2 — Criar, alterar e atualizar o status de uma consulta
 
 Execute, nesta ordem, a pasta **Agendamento - Fluxo principal** da collection:
 
 1. `Cadastrar paciente`;
 2. `Criar consulta`;
 3. `Alterar consulta`.
+4. `Atualizar status da consulta`, enviando a versão retornada no passo anterior.
 
 Essas chamadas usam `POST /api/pacientes`, `POST /api/consultas` e
-`PUT /api/consultas/{id}` no serviço de agendamento. A criação e a alteração
-publicam eventos no Kafka.
+`PUT /api/consultas/{id}` e `PATCH /api/consultas/{id}/status` no serviço de
+agendamento. A criação, a alteração e a mudança de status publicam eventos no
+Kafka.
 
 ### Passo 3 — Ver o evento e a projeção
 

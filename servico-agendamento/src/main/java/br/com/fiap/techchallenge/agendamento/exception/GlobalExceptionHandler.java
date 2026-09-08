@@ -47,6 +47,12 @@ public class GlobalExceptionHandler {
                 .body(new ErroResponse("CONFLICT", "Consultas canceladas ou realizadas não podem ser alteradas"));
     }
 
+    @ExceptionHandler(TransicaoDeStatusInvalidaException.class)
+    ResponseEntity<ErroResponse> transicaoDeStatusInvalida() {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErroResponse("CONFLICT", "Transição de status da consulta não permitida"));
+    }
+
     @ExceptionHandler(ConflitoDeAtualizacaoException.class)
     ResponseEntity<ErroResponse> conflitoDeAtualizacao() {
         return ResponseEntity.status(HttpStatus.CONFLICT)

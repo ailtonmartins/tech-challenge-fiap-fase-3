@@ -1,6 +1,7 @@
 package br.com.fiap.techchallenge.agendamento.controller;
 
 import br.com.fiap.techchallenge.agendamento.dto.AtualizarConsultaRequest;
+import br.com.fiap.techchallenge.agendamento.dto.AtualizarStatusConsultaRequest;
 import br.com.fiap.techchallenge.agendamento.dto.CadastrarPacienteRequest;
 import br.com.fiap.techchallenge.agendamento.dto.ConsultaResponse;
 import br.com.fiap.techchallenge.agendamento.dto.CriarConsultaRequest;
@@ -50,14 +51,18 @@ class AgendamentoControllerTest {
         OffsetDateTime dataHora = OffsetDateTime.now().plusDays(1);
         var criar = new CriarConsultaRequest(pacienteId, "Dra. Ana", "Cardiologia", dataHora, "retorno");
         var atualizar = new AtualizarConsultaRequest("Dra. Ana", "Cardiologia", dataHora.plusDays(1), "alterada", 0L);
+        var atualizarStatus = new AtualizarStatusConsultaRequest(StatusConsulta.CONFIRMADA, 0L);
         var response = new ConsultaResponse(consultaId, pacienteId, "Dra. Ana", "Cardiologia", dataHora, StatusConsulta.AGENDADA, 0L);
         when(service.criar(criar, authentication)).thenReturn(response);
         when(service.atualizar(consultaId, atualizar, authentication)).thenReturn(response);
+        when(service.atualizarStatus(consultaId, atualizarStatus, authentication)).thenReturn(response);
 
         assertThat(controller.criar(criar, authentication).getStatusCode().value()).isEqualTo(201);
         assertThat(controller.atualizar(consultaId, atualizar, authentication)).isEqualTo(response);
+        assertThat(controller.atualizarStatus(consultaId, atualizarStatus, authentication)).isEqualTo(response);
         verify(service).criar(criar, authentication);
         verify(service).atualizar(consultaId, atualizar, authentication);
+        verify(service).atualizarStatus(consultaId, atualizarStatus, authentication);
     }
 
     @Test

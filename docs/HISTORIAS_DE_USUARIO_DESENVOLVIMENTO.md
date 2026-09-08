@@ -151,6 +151,22 @@ As prioridades seguem esta convenção:
 
 ---
 
+### US-22 — Atualizar status da consulta
+
+**Prioridade:** P0
+**Como** médico ou enfermeiro, **quero** confirmar, realizar ou cancelar uma
+consulta, **para** registrar corretamente seu ciclo de vida.
+
+**Critérios de aceite:**
+
+- [x] A operação é disponibilizada em `PATCH /api/consultas/{id}/status`.
+- [x] A operação exige a versão atual da consulta.
+- [x] São permitidas `AGENDADA → CONFIRMADA/CANCELADA` e `CONFIRMADA → REALIZADA/CANCELADA`.
+- [x] `REALIZADA` e `CANCELADA` são estados finais e transições inválidas retornam `409 Conflict`.
+- [x] Uma mudança de status atualiza a versão e publica `CONSULTA_ATUALIZADA` no Kafka.
+
+---
+
 ### US-07 — Publicar evento de consulta
 
 **Prioridade:** P0  

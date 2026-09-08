@@ -1,6 +1,7 @@
 package br.com.fiap.techchallenge.agendamento.controller;
 
 import br.com.fiap.techchallenge.agendamento.dto.AtualizarConsultaRequest;
+import br.com.fiap.techchallenge.agendamento.dto.AtualizarStatusConsultaRequest;
 import br.com.fiap.techchallenge.agendamento.dto.ConsultaResponse;
 import br.com.fiap.techchallenge.agendamento.dto.CriarConsultaRequest;
 import br.com.fiap.techchallenge.agendamento.service.ConsultaService;
@@ -9,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -39,5 +41,13 @@ public class ConsultaController {
             @Valid @RequestBody AtualizarConsultaRequest request,
             Authentication authentication) {
         return consultaService.atualizar(id, request, authentication);
+    }
+
+    @PatchMapping("/{id}/status")
+    public ConsultaResponse atualizarStatus(
+            @PathVariable java.util.UUID id,
+            @Valid @RequestBody AtualizarStatusConsultaRequest request,
+            Authentication authentication) {
+        return consultaService.atualizarStatus(id, request, authentication);
     }
 }
