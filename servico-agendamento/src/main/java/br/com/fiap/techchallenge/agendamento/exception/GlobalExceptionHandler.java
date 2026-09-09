@@ -8,6 +8,9 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -47,6 +50,12 @@ public class GlobalExceptionHandler {
                 .body(new ErroResponse("CONFLICT", "Consultas canceladas ou realizadas não podem ser alteradas"));
     }
 
+    @ExceptionHandler(TransicaoDeStatusInvalidaException.class)
+    ResponseEntity<ErroResponse> transicaoDeStatusInvalida() {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErroResponse("CONFLICT", "Transição de status da consulta não permitida"));
+    }
+
     @ExceptionHandler(ConflitoDeAtualizacaoException.class)
     ResponseEntity<ErroResponse> conflitoDeAtualizacao() {
         return ResponseEntity.status(HttpStatus.CONFLICT)
@@ -60,11 +69,18 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    ResponseEntity<ErroResponse> entradaInvalida() {
+    ResponseEntity<ErroResponse> entradaInvalida(MethodArgumentNotValidException exception) {
+        Map<String, String> detalhes = new LinkedHashMap<>();
+        exception.getBindingResult().getFieldErrors().forEach(erro ->
+                detalhes.putIfAbsent(erro.getField(), erro.getDefaultMessage()));
+
         return ResponseEntity.badRequest()
-                .body(new ErroResponse("VALIDATION_ERROR", "Dados de entrada inválidos"));
+                .body(new ErroResponse("VALIDATION_ERROR", "Dados de entrada inválidos", detalhes));
     }
 
-    record ErroResponse(String code, String message) {
+    record ErroResponse(String code, String message, Map<String, String> details) {
+        ErroResponse(String code, String message) {
+            this(code, message, Map.of());
+        }
     }
 }

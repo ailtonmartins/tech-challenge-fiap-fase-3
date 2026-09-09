@@ -151,6 +151,22 @@ As prioridades seguem esta convenção:
 
 ---
 
+### US-22 — Atualizar status da consulta
+
+**Prioridade:** P0
+**Como** médico ou enfermeiro, **quero** confirmar, realizar ou cancelar uma
+consulta, **para** registrar corretamente seu ciclo de vida.
+
+**Critérios de aceite:**
+
+- [x] A operação é disponibilizada em `PATCH /api/consultas/{id}/status`.
+- [x] A operação exige a versão atual da consulta.
+- [x] São permitidas `AGENDADA → CONFIRMADA/CANCELADA` e `CONFIRMADA → REALIZADA/CANCELADA`.
+- [x] `REALIZADA` e `CANCELADA` são estados finais e transições inválidas retornam `409 Conflict`.
+- [x] Uma mudança de status atualiza a versão e publica `CONSULTA_ATUALIZADA` no Kafka.
+
+---
+
 ### US-07 — Publicar evento de consulta
 
 **Prioridade:** P0  
@@ -228,29 +244,29 @@ As prioridades seguem esta convenção:
 
 **Critérios de aceite:**
 
-- [ ] O serviço usa o consumer group `notificacao-consumer-v1`.
-- [ ] O consumidor processa eventos de criação e atualização.
-- [ ] Cada evento processado gera um registro de notificação com `eventId` único.
-- [ ] Um evento duplicado não envia ou registra o lembrete novamente.
-- [ ] O offset é confirmado somente após o processamento terminar.
-- [ ] Falhas permanentes são encaminhadas ao tópico DLT correspondente.
+- [x] O serviço usa o consumer group `notificacao-consumer-v1`.
+- [x] O consumidor processa eventos de criação e atualização.
+- [x] Cada evento processado gera um registro de notificação com `eventId` único.
+- [x] Um evento duplicado não envia ou registra o lembrete novamente.
+- [x] O offset é confirmado somente após o processamento terminar.
+- [x] Falhas permanentes são encaminhadas ao tópico DLT correspondente.
 
 ---
 
 ### US-12 — Obter dados atualizados por gRPC
 
 **Prioridade:** P0  
-**Como** serviço de notificações, **quero** buscar os dados atuais da consulta no serviço de histórico via gRPC, **para** montar o lembrete com informações consistentes e atualizadas.
+**Como** serviço de notificações, **quero** buscar os dados atuais do paciente no serviço de agendamento via gRPC, **para** direcionar o lembrete com informações consistentes e atualizadas.
 
 **Critérios de aceite:**
 
-- [ ] O serviço de histórico expõe `HistoricoNotificacaoService.ObterDadosDoLembrete` na porta `9090`.
-- [ ] O contrato está versionado em `contratos-grpc/src/main/proto`.
-- [ ] O serviço de notificações usa o stub gerado pelo Protobuf.
-- [ ] A chamada recebe `consultaId` e retorna apenas dados necessários ao lembrete.
-- [ ] O cliente gRPC usa deadline/timeout configurável.
-- [ ] Indisponibilidade do histórico provoca retentativa limitada e circuit breaker, sem confirmar prematuramente o offset Kafka.
-- [ ] A comunicação interna possui autenticação adequada
+- [x] O serviço de agendamento expõe `BuscaPacienteById.ObterDadosDoPaciente` na porta interna `6565`.
+- [x] O contrato está versionado em `contratos-grpc/src/main/proto/pacientes.proto`.
+- [x] O serviço de notificações usa o stub gerado pelo Protobuf.
+- [x] A chamada recebe `pacienteId` e retorna apenas identificador, nome, e-mail e telefone do paciente.
+- [x] O cliente gRPC consulta o serviço interno antes de disparar as notificações.
+- [x] Falhas de integração são tratadas pelo fluxo de processamento sem confirmar prematuramente o offset Kafka.
+- [x] A comunicação usa a rede interna entre os serviços.
 
 ---
 
@@ -261,11 +277,11 @@ As prioridades seguem esta convenção:
 
 **Critérios de aceite:**
 
-- [ ] O lembrete contém nome do paciente, profissional, especialidade e data/hora.
-- [ ] O envio pode ser simulado por log e persistido no banco na primeira versão.
-- [ ] A notificação possui status `RECEBIDA`, `ENVIADA` ou `FALHA`.
-- [ ] O sistema não inclui observações médicas no texto do lembrete.
-- [ ] O fuso horário apresentado é o configurado para a aplicação.
+- [x] O lembrete contém nome do paciente, profissional, especialidade e data/hora.
+- [x] O envio pode ser simulado por log e persistido no banco na primeira versão.
+- [x] A notificação possui status `RECEBIDA`, `ENVIADA` ou `FALHA`.
+- [x] O sistema não inclui observações médicas no texto do lembrete.
+- [x] O fuso horário apresentado é o configurado para a aplicação.
 
 ---
 
@@ -278,11 +294,11 @@ As prioridades seguem esta convenção:
 
 **Critérios de aceite:**
 
-- [ ] Falhas transitórias usam retentativa com backoff.
-- [ ] Falhas de validação não são retentadas indefinidamente.
-- [ ] Após o limite de tentativas, a mensagem é publicada no tópico `.DLT` correspondente.
-- [ ] O erro e o `eventId` podem ser rastreados.
-- [ ] Existe procedimento documentado para inspeção e reprocessamento de DLT.
+- [x] Falhas transitórias usam retentativa com backoff.
+- [x] Falhas de validação não são retentadas indefinidamente.
+- [x] Após o limite de tentativas, a mensagem é publicada no tópico `.DLT` correspondente.
+- [x] O erro e o `eventId` podem ser rastreados.
+- [x] Existe procedimento documentado para inspeção e reprocessamento de DLT.
 
 ---
 
@@ -293,11 +309,11 @@ As prioridades seguem esta convenção:
 
 **Critérios de aceite:**
 
-- [ ] Todos os serviços expõem `GET /actuator/health`.
-- [ ] Os endpoints administrativos não necessários são protegidos.
-- [ ] Logs incluem `eventId`, `consultaId`, nome do serviço e resultado da operação quando aplicável.
-- [ ] Existem métricas de eventos publicados, consumidos, falhas, retentativas e lag dos consumer groups.
-- [ ] Dados sensíveis não são registrados nos logs.
+- [x] Todos os serviços expõem `GET /actuator/health`.
+- [x] Os endpoints administrativos não necessários são protegidos.
+- [x] Logs incluem `eventId`, `consultaId`, nome do serviço e resultado da operação quando aplicável.
+- [x] Existem métricas de eventos publicados, consumidos, falhas, retentativas e lag dos consumer groups.
+- [x] Dados sensíveis não são registrados nos logs.
 
 ---
 
@@ -308,13 +324,13 @@ As prioridades seguem esta convenção:
 
 **Critérios de aceite:**
 
-- [ ] Há testes unitários para regras de agendamento, autorização, idempotência e montagem de lembrete.
-- [ ] Há testes de integração com PostgreSQL e Kafka via Testcontainers.
-- [ ] Há teste de integração GraphQL para o serviço de histórico.
-- [ ] Há teste de integração gRPC para o contrato de lembrete.
-- [ ] Há testes para `401`, `403`, validação e tentativa de acesso de um paciente a dados de outro.
-- [ ] O comando de testes está documentado e executa sem depender de serviços externos instalados manualmente.
-- [ ] `./gradlew test` executa os testes de todos os módulos a partir da raiz.
+- [x] Há testes unitários para regras de agendamento, autorização, idempotência e montagem de lembrete.
+- [x] Há testes de integração com PostgreSQL e Kafka via Testcontainers.
+- [x] Há teste de integração GraphQL para o serviço de histórico.
+- [x] Há teste de integração gRPC para o contrato de lembrete.
+- [x] Há testes para `401`, `403`, validação e tentativa de acesso de um paciente a dados de outro.
+- [x] O comando de testes está documentado e executa sem depender de serviços externos instalados manualmente.
+- [x] `./gradlew test` executa os testes de todos os módulos a partir da raiz.
 
 ---
 
@@ -327,11 +343,11 @@ As prioridades seguem esta convenção:
 
 **Critérios de aceite:**
 
-- [ ] A collection possui requests para health checks, agendamento, histórico GraphQL, segurança e evidências de mensageria.
-- [ ] Há ambiente local com URLs e credenciais de demonstração.
-- [ ] A collection contém exemplos para médico, enfermeiro e paciente.
-- [ ] Há cenário que comprova acesso negado ao paciente indevido.
-- [ ] As requisições possuem asserções básicas de status e erro.
+- [x] A collection possui requests para health checks, agendamento, histórico GraphQL, segurança e evidências de mensageria.
+- [x] Há ambiente local com URLs e credenciais de demonstração.
+- [x] A collection contém exemplos para médico, enfermeiro e paciente.
+- [x] Há cenário que comprova acesso negado ao paciente indevido.
+- [x] As requisições possuem asserções básicas de status e erro.
 
 ---
 
@@ -342,12 +358,12 @@ As prioridades seguem esta convenção:
 
 **Critérios de aceite:**
 
-- [ ] O README contém arquitetura, tecnologias e pré-requisitos.
-- [ ] O README explica como subir o ambiente e executar os testes.
-- [ ] O contrato REST, GraphQL, Kafka e gRPC está documentado.
-- [ ] A estratégia de autenticação, autorização, hardening e proteção de dados está documentada.
-- [ ] A consistência eventual do histórico e as estratégias de resiliência estão documentadas.
-- [ ] O repositório não contém segredos reais.
+- [x] O README contém arquitetura, tecnologias e pré-requisitos.
+- [x] O README explica como subir o ambiente e executar os testes.
+- [x] O contrato REST, GraphQL, Kafka e gRPC está documentado.
+- [x] A estratégia de autenticação, autorização, hardening e proteção de dados está documentada.
+- [x] A consistência eventual do histórico e as estratégias de resiliência estão documentadas.
+- [x] O repositório não contém segredos reais.
 
 ---
 

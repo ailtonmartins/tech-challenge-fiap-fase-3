@@ -1,9 +1,14 @@
 name: tech-challenge-fiap-fase-3
 
+x-timezone-environment: &timezone-environment
+  TZ: America/Sao_Paulo
+
 services:
   postgres:
     image: postgres:17-alpine
+    command: ["postgres", "-c", "timezone=America/Sao_Paulo"]
     environment:
+      <<: *timezone-environment
       POSTGRES_DB: ${POSTGRES_DB:-hospital}
       POSTGRES_USER: ${POSTGRES_USER:-hospital_app}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123456}
@@ -22,6 +27,7 @@ services:
   kafka:
     image: confluentinc/cp-kafka:7.7.1
     environment:
+      <<: *timezone-environment
       CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -49,6 +55,7 @@ services:
   kafka-ui:
     image: provectuslabs/kafka-ui:v0.7.2
     environment:
+      <<: *timezone-environment
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
     ports:
@@ -58,11 +65,97 @@ services:
         condition: service_healthy
     networks: [hospital]
 
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:v1.9.0
+    command:
+      - "--kafka.server=kafka:29092"
+    environment:
+      <<: *timezone-environment
+    ports:
+      - "127.0.0.1:9308:9308"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks: [hospital]
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+    environment:
+      <<: *timezone-environment
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    depends_on:
+      servico-agendamento:
+        condition: service_healthy
+      servico-historico:
+        condition: service_healthy
+      servico-notificacao:
+        condition: service_healthy
+      kafka-exporter:
+        condition: service_started
+    networks: [hospital]
+
+  loki:
+    image: grafana/loki:3.4.2
+    command: -config.file=/etc/loki/config.yml
+    environment:
+      <<: *timezone-environment
+    ports:
+      - "127.0.0.1:3100:3100"
+    volumes:
+      - ./infra/loki/loki.yml:/etc/loki/config.yml:ro
+      - loki-data:/loki
+    networks: [hospital]
+
+  alloy:
+    image: grafana/alloy:v1.9.0
+    command: run --server.http.listen-addr=0.0.0.0:12345 /etc/alloy/config.alloy
+    environment:
+      <<: *timezone-environment
+    ports:
+      - "127.0.0.1:12345:12345"
+    volumes:
+      - ./infra/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - alloy-data:/var/lib/alloy/data
+    depends_on:
+      loki:
+        condition: service_started
+    networks: [hospital]
+
+  grafana:
+    image: grafana/grafana:12.1.0
+    environment:
+      <<: *timezone-environment
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      prometheus:
+        condition: service_started
+      loki:
+        condition: service_started
+    networks: [hospital]
+
   servico-agendamento:
     build:
       context: .
       dockerfile: servico-agendamento/Dockerfile
     environment:
+      <<: *timezone-environment
+      JAVA_TOOL_OPTIONS: -Duser.timezone=America/Sao_Paulo
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:29092}
       AGENDAMENTO_DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-hospital}?currentSchema=agendamento
@@ -70,6 +163,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123456}
     ports:
       - "8080:8080"
+      - "127.0.0.1:6565:6565"
     depends_on:
       postgres:
         condition: service_healthy
@@ -88,6 +182,9 @@ services:
       context: .
       dockerfile: servico-historico/Dockerfile
     environment:
+      <<: *timezone-environment
+      JAVA_TOOL_OPTIONS: -Duser.timezone=America/Sao_Paulo
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:29092}
       HISTORICO_DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-hospital}?currentSchema=historico
       POSTGRES_USER: ${POSTGRES_USER:-hospital_app}
@@ -112,14 +209,22 @@ services:
       context: .
       dockerfile: servico-notificacao/Dockerfile
     environment:
+      <<: *timezone-environment
+      JAVA_TOOL_OPTIONS: -Duser.timezone=America/Sao_Paulo
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:29092}
       NOTIFICACAO_DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-hospital}?currentSchema=notificacao
+      PACIENTE_GRPC_HOST: servico-agendamento
+      PACIENTE_GRPC_PORT: 6565
+      PACIENTE_GRPC_DEADLINE_MILLIS: 2000
     ports:
       - "8082:8082"
     depends_on:
       postgres:
         condition: service_healthy
       kafka:
+        condition: service_healthy
+      servico-agendamento:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8082/actuator/health"]
@@ -136,3 +241,7 @@ networks:
 volumes:
   postgres-data:
   kafka-data:
+  prometheus-data:
+  grafana-data:
+  loki-data:
+  alloy-data:

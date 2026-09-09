@@ -1,6 +1,7 @@
 package br.com.fiap.techchallenge.agendamento.service;
 
 import br.com.fiap.techchallenge.agendamento.dto.AtualizarConsultaRequest;
+import br.com.fiap.techchallenge.agendamento.dto.AtualizarStatusConsultaRequest;
 import br.com.fiap.techchallenge.agendamento.dto.ConsultaAtualizadaEvento;
 import br.com.fiap.techchallenge.agendamento.dto.ConsultaCriadaEvento;
 import br.com.fiap.techchallenge.agendamento.dto.ConsultaResponse;
@@ -11,6 +12,7 @@ import br.com.fiap.techchallenge.agendamento.exception.ConflitoDeAgendamentoExce
 import br.com.fiap.techchallenge.agendamento.exception.ConflitoDeAtualizacaoException;
 import br.com.fiap.techchallenge.agendamento.exception.ConsultaNaoPodeSerAlteradaException;
 import br.com.fiap.techchallenge.agendamento.exception.PacienteNaoEncontradoException;
+import br.com.fiap.techchallenge.agendamento.exception.TransicaoDeStatusInvalidaException;
 import br.com.fiap.techchallenge.agendamento.model.Consulta;
 import br.com.fiap.techchallenge.agendamento.model.Paciente;
 import br.com.fiap.techchallenge.agendamento.model.StatusConsulta;
@@ -112,12 +114,17 @@ class ConsultaServiceTest {
         when(consultaRepository.findById(consulta.getId())).thenReturn(Optional.of(consulta));
         when(consultaRepository.existsByPacienteIdAndDataHoraAndIdNot(pacienteId, request.dataHora(), consulta.getId())).thenReturn(false);
         when(pacienteRepository.findById(pacienteId)).thenReturn(Optional.of(paciente));
-        when(consultaRepository.save(consulta)).thenReturn(consulta);
+        when(consultaRepository.saveAndFlush(consulta)).thenAnswer(invocation -> {
+            ReflectionTestUtils.setField(consulta, "version", request.version() + 1);
+            return consulta;
+        });
 
         ConsultaResponse response = consultaService.atualizar(consulta.getId(), request, authentication());
 
         assertEquals("Neurologia", response.especialidade());
         assertEquals(request.dataHora(), response.dataHora());
+        assertEquals(request.version() + 1, response.version());
+        verify(consultaRepository).saveAndFlush(consulta);
         ArgumentCaptor<ConsultaAtualizadaEvent> eventCaptor = ArgumentCaptor.forClass(ConsultaAtualizadaEvent.class);
         verify(eventPublisher).publishEvent(eventCaptor.capture());
         ConsultaAtualizadaEvento evento = eventCaptor.getValue().evento();
@@ -144,6 +151,44 @@ class ConsultaServiceTest {
         assertThrows(ConsultaNaoPodeSerAlteradaException.class,
                 () -> consultaService.atualizar(consulta.getId(), atualizarRequest(consulta.getVersion()), authentication()));
         verify(consultaRepository, never()).save(any());
+    }
+
+    @Test
+    void deveConfirmarConsultaEPublicarEventoComNovoStatus() {
+        UUID pacienteId = UUID.randomUUID();
+        Consulta consulta = consulta(pacienteId);
+        AtualizarStatusConsultaRequest request = new AtualizarStatusConsultaRequest(StatusConsulta.CONFIRMADA, consulta.getVersion());
+        Paciente paciente = new Paciente("Maria Souza", "maria@example.com", "+55 11 99999-9999", OffsetDateTime.now().minusYears(30).toLocalDate());
+        when(consultaRepository.findById(consulta.getId())).thenReturn(Optional.of(consulta));
+        when(pacienteRepository.findById(pacienteId)).thenReturn(Optional.of(paciente));
+        when(consultaRepository.saveAndFlush(consulta)).thenAnswer(invocation -> {
+            ReflectionTestUtils.setField(consulta, "version", request.version() + 1);
+            return consulta;
+        });
+
+        ConsultaResponse response = consultaService.atualizarStatus(consulta.getId(), request, authentication());
+
+        assertEquals(StatusConsulta.CONFIRMADA, response.status());
+        assertEquals(1L, response.version());
+        ArgumentCaptor<ConsultaAtualizadaEvent> eventCaptor = ArgumentCaptor.forClass(ConsultaAtualizadaEvent.class);
+        verify(eventPublisher).publishEvent(eventCaptor.capture());
+        assertEquals("CONFIRMADA", eventCaptor.getValue().evento().status());
+    }
+
+    @Test
+    void deveImpedirTransicaoInvalidaOuReaberturaDeConsulta() {
+        Consulta consulta = consulta(UUID.randomUUID());
+        when(consultaRepository.findById(consulta.getId())).thenReturn(Optional.of(consulta));
+
+        assertThrows(TransicaoDeStatusInvalidaException.class,
+                () -> consultaService.atualizarStatus(consulta.getId(),
+                        new AtualizarStatusConsultaRequest(StatusConsulta.REALIZADA, consulta.getVersion()), authentication()));
+
+        ReflectionTestUtils.setField(consulta, "status", StatusConsulta.CANCELADA);
+        assertThrows(TransicaoDeStatusInvalidaException.class,
+                () -> consultaService.atualizarStatus(consulta.getId(),
+                        new AtualizarStatusConsultaRequest(StatusConsulta.CONFIRMADA, consulta.getVersion()), authentication()));
+        verify(consultaRepository, never()).saveAndFlush(any());
     }
 
     private CriarConsultaRequest request(UUID pacienteId) {

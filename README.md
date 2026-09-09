@@ -5,16 +5,16 @@ e envio de lembretes. A solução usa Java 21, Spring Boot, PostgreSQL e Kafka.
 
 ## Estado atual
 
-A infraestrutura local da **US-01** está disponível: três aplicações Spring
-Boot com Actuator, um PostgreSQL com schemas isolados por serviço, Kafka em
-modo KRaft e Kafka UI. As regras de negócio, segurança, GraphQL, eventos e
-gRPC serão implementados nas próximas histórias.
+As histórias de usuário estão implementadas. A solução reúne agendamento REST,
+histórico GraphQL, eventos Kafka e notificações. Quando recebe um evento de
+consulta, o serviço de notificações consulta os dados atuais do paciente via
+gRPC no serviço de agendamento antes de acionar os canais de notificação.
 
 ## Arquitetura inicial
 
 ```text
 Cliente
-  ├─ servico-agendamento  :8080 ── PostgreSQL :5432 / schema agendamento
+  ├─ servico-agendamento  :8080 (gRPC interno :6565) ── PostgreSQL :5432 / schema agendamento
   ├─ servico-historico    :8081 ──── PostgreSQL :5432 / schema historico
   └─ servico-notificacao  :8082 ─── PostgreSQL :5432 / schema notificacao
 
@@ -79,9 +79,10 @@ expor senha, hash ou detalhes internos. O health check permanece público.
 
 ## Massa de desenvolvimento
 
-Com o perfil `dev` ativo, o Flyway executa a migration de massa de
-desenvolvimento. O `compose.yaml` já ativa esse perfil; nos perfis `test` e
-`prod`, essa migration não faz parte dos locais de migration do Flyway.
+Com o perfil `dev` ativo, o Flyway executa as migrations de massa de
+desenvolvimento nos três serviços. O `compose.yaml` já ativa esse perfil; nos
+perfis `test` e `prod`, essas migrations não fazem parte dos locais de
+migration do Flyway.
 
 As senhas de demonstração são `fiap-dev-2026` e são gravadas somente como hash
 BCrypt. Os identificadores fixos para testes manuais são:
@@ -95,6 +96,11 @@ BCrypt. Os identificadores fixos para testes manuais são:
 | Consulta futura da Maria | `30000000-0000-0000-0000-000000000001` |
 | Consulta passada da Maria | `30000000-0000-0000-0000-000000000002` |
 | Consulta futura do João | `30000000-0000-0000-0000-000000000003` |
+
+O histórico recebe uma projeção das três consultas acima. O serviço de
+notificação recebe três resultados demonstrativos: `ENVIADA`, `NAO_ENVIADA` e
+`FALHA`, identificados respectivamente pelos `eventId`s terminados em `001`,
+`002` e `003` na faixa `50000000-...`.
 
 A migration Flyway é aplicada uma única vez por banco; as cláusulas
 `ON CONFLICT` também protegem os IDs fixos caso os dados já existam. Por ser
@@ -170,6 +176,34 @@ Consultas `CANCELADA` ou `REALIZADA` não podem ser alteradas. A versão evita
 sobrescrever alterações concorrentes e uma atualização bem-sucedida publica o
 evento `CONSULTA_ATUALIZADA` no tópico `consulta.atualizada.v1`.
 
+Para mudar o ciclo de vida, use `PATCH /api/consultas/{id}/status` com a versão
+atual. São permitidas as transições `AGENDADA → CONFIRMADA/CANCELADA` e
+`CONFIRMADA → REALIZADA/CANCELADA`.
+
+```json
+{
+  "status": "CONFIRMADA",
+  "version": 1
+}
+```
+
+Cada transição incrementa a versão, retorna a nova versão e publica
+`CONSULTA_ATUALIZADA`. Consultas `REALIZADA` e `CANCELADA` são estados finais.
+
+Quando uma validação falha, a API responde `400` com `code` igual a
+`VALIDATION_ERROR` e o motivo de cada campo em `details`. Exemplo:
+
+```json
+{
+  "code": "VALIDATION_ERROR",
+  "message": "Dados de entrada inválidos",
+  "details": {
+    "dataHora": "dataHora deve estar no futuro",
+    "version": "version é obrigatória"
+  }
+}
+```
+
 ## Eventos Kafka
 
 Os eventos `CONSULTA_CRIADA` e `CONSULTA_ATUALIZADA` têm `eventId`, tipo,
@@ -206,13 +240,152 @@ O serviço de histórico expõe `POST http://localhost:8081/graphql`. As queries
 `errors[].extensions.code`: `FORBIDDEN`, `NOT_FOUND` ou `VALIDATION_ERROR`.
 A query `minhasConsultas`, exclusiva do perfil `PACIENTE`, determina o paciente
 vinculado ao usuário autenticado e não aceita `pacienteId`. Ela aceita o filtro
-`somenteFuturas`; sua resposta não expõe o identificador do paciente. A
-collection em [`postman/`](postman/) contém os exemplos executáveis.
+`somenteFuturas`; sua resposta não expõe o identificador do paciente.
 
-O script gRPC nessa pasta é um cenário preparado para a US-12: o contrato já
-existe, mas o servidor gRPC será disponibilizado nessa próxima história.
+## Testes manuais com Postman
+
+Importe [`postman/Tech-Challenge-Fase-3.postman_collection.json`](postman/Tech-Challenge-Fase-3.postman_collection.json)
+no Postman. A collection reúne health checks, o fluxo REST de agendamento e as
+queries GraphQL. Execute a pasta **Agendamento - Fluxo principal** na ordem
+indicada.
+
+As requisições de mudança de status são fixas e atualizam automaticamente a
+variável `consultaVersao` com a versão devolvida pela API:
+
+- **4 - Confirmar consulta** — muda para `CONFIRMADA`;
+- **5A - Realizar consulta (após confirmar)** — muda para `REALIZADA`;
+- **5B - Cancelar consulta (após confirmar; alternativa ao 5A)** — muda para
+  `CANCELADA`.
+
+Execute somente **5A** ou **5B** para uma mesma consulta, pois os estados
+`REALIZADA` e `CANCELADA` são finais.
+
+### Teste gRPC — consulta de paciente
+
+O contrato canônico é
+[`contratos-grpc/src/main/proto/pacientes.proto`](contratos-grpc/src/main/proto/pacientes.proto).
+Não há cópia dele na pasta `postman/`, evitando divergência entre o contrato
+executado pela aplicação e o usado no teste.
+
+Com o ambiente Docker em execução:
+
+1. Selecione **New > gRPC** no Postman.
+2. Informe o servidor `127.0.0.1:6565`.
+3. Importe `contratos-grpc/src/main/proto/pacientes.proto` na tela da
+   requisição.
+4. Selecione `BuscaPacienteById > ObterDadosDoPaciente`.
+5. Informe um dos payloads a seguir no editor **Message** e clique em
+   **Invoke**.
+6. Use **Save As** para manter cada cenário em uma collection multiprotocolo.
+
+> A collection JSON contém somente HTTP e GraphQL. Requests gRPC nativos devem
+> ser salvos pelo Postman em uma collection multiprotocolo.
+
+Sucesso:
+
+```json
+{
+  "paciente_id": "20000000-0000-0000-0000-000000000001"
+}
+```
+
+Resultado esperado: `pacienteId`, `pacienteNome`, `pacienteEmail` e
+`pacienteTelefone` de Maria Souza.
+
+Identificador inválido:
+
+```json
+{
+  "paciente_id": "nao-e-uuid"
+}
+```
+
+Resultado esperado: status `INVALID_ARGUMENT`.
+
+Paciente inexistente:
+
+```json
+{
+  "paciente_id": "00000000-0000-0000-0000-000000000099"
+}
+```
+
+Resultado esperado: status `NOT_FOUND`.
+
+O Compose publica a porta somente em `127.0.0.1:6565` no ambiente local; entre
+os containers, a comunicação continua em `servico-agendamento:6565`.
+
+## Observabilidade
+
+O ambiente local inclui Prometheus e Grafana. Após `docker compose up --build`,
+acesse:
+
+| Recurso | Endereço | Finalidade |
+|---|---|---|
+| Prometheus | http://127.0.0.1:9090 | Consultar alvos e séries de métricas |
+| Grafana | http://127.0.0.1:3000 | Criar e visualizar dashboards |
+| Loki | http://127.0.0.1:3100 | API local de consulta de logs |
+| Grafana Alloy | http://127.0.0.1:12345 | Diagnóstico do coletor de logs |
+| Kafka Exporter | http://127.0.0.1:9308/metrics | Métricas de tópicos, grupos consumidores e lag |
+
+O login inicial do Grafana é `admin` / `admin`, configurável por
+`GRAFANA_ADMIN_USER` e `GRAFANA_ADMIN_PASSWORD`. O datasource Prometheus é
+provisionado automaticamente, assim como o dashboard **Hospital - Visão dos
+Serviços**. Os três serviços expõem métricas em suas redes
+internas nos endpoints `/actuator/prometheus`; o Prometheus as coleta a cada
+15 segundos. Esses endpoints não são publicados no host.
+
+Os logs dos containers são coletados pelo Grafana Alloy e enviados ao Loki. No
+Grafana, abra o dashboard **Hospital - Visão dos Serviços** para o painel
+consolidado ou os dashboards **Hospital - Agendamento - Logs**, **Hospital -
+Histórico - Logs** e **Hospital - Notificação - Logs** para consultar cada
+serviço separadamente. Também é possível usar **Explore > Loki** com consultas
+como:
+
+```logql
+{service_name=~".*servico-notificacao.*"}
+```
+
+```logql
+{service_name=~".*servico-.*"} |= "eventId="
+```
+
+O Alloy recebe o socket Docker somente para leitura. Em produção, esse acesso
+deve ser isolado em uma rede operacional e concedido ao menor número possível
+de agentes.
+
+O dashboard **Hospital - Mensageria Kafka** apresenta disponibilidade do
+exporter, lag e membros dos grupos consumidores, offsets dos tópicos de consulta
+e os logs Kafka correlatos no Loki.
+
+No Compose de desenvolvimento, `GET /actuator/prometheus` não exige HTTP Basic
+para que o Prometheus interno realize o scrape. Em produção, mantenha a rota
+em rede operacional privada ou proteja-a com autenticação compatível com o
+coletor; não exponha endpoints de gerenciamento na internet.
+
+Consultas úteis no Prometheus:
+
+```promql
+up
+sum by (job) (rate(http_server_requests_seconds_count[5m]))
+sum by (job) (jvm_memory_used_bytes)
+```
+
+## Consulta de paciente por gRPC
+
+O serviço de notificações consome eventos de consulta e, durante o
+processamento, chama o serviço interno
+`BuscaPacienteById.ObterDadosDoPaciente` do agendamento. O contrato está em
+[`contratos-grpc/src/main/proto/pacientes.proto`](contratos-grpc/src/main/proto/pacientes.proto)
+e recebe `pacienteId`, retornando apenas identificador, nome, e-mail e telefone
+do paciente. A porta gRPC `6565` é destinada exclusivamente à comunicação
+entre serviços na rede Docker; ela não substitui APIs REST ou GraphQL e não é
+exposta ao cliente final.
 
 ## Estrutura
+
+O roteiro visual para navegar e demonstrar os fluxos disponíveis está em
+[docs/ROTEIRO_NAVEGACAO.md](docs/ROTEIRO_NAVEGACAO.md).
 
 ```text
 .

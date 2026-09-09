@@ -111,4 +111,8 @@ public class Consulta {
         this.dataHora = dataHora;
         this.observacoes = observacoes;
     }
+
+    public void atualizarStatus(StatusConsulta status) {
+        this.status = status;
+    }
 }

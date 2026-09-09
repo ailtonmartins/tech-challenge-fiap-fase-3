@@ -1,0 +1,19 @@
+{
+  "uid": "logs-servico-agendamento",
+  "title": "Hospital - Agendamento - Logs",
+  "tags": ["hospital", "agendamento", "loki", "logs"],
+  "timezone": "browser",
+  "schemaVersion": 41,
+  "version": 1,
+  "refresh": "10s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [{
+    "id": 1,
+    "type": "logs",
+    "title": "Logs do Serviço de Agendamento",
+    "datasource": "Loki",
+    "targets": [{ "refId": "A", "expr": "{service_name=~\".*servico-agendamento.*\"}" }],
+    "options": { "dedupStrategy": "none", "enableLogDetails": true, "showCommonLabels": false, "showLabels": true, "sortOrder": "Descending", "wrapLogMessage": true },
+    "gridPos": { "h": 20, "w": 24, "x": 0, "y": 0 }
+  }]
+}

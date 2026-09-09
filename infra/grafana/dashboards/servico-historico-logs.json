@@ -1,0 +1,19 @@
+{
+  "uid": "logs-servico-historico",
+  "title": "Hospital - Histórico - Logs",
+  "tags": ["hospital", "historico", "loki", "logs"],
+  "timezone": "browser",
+  "schemaVersion": 41,
+  "version": 1,
+  "refresh": "10s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [{
+    "id": 1,
+    "type": "logs",
+    "title": "Logs do Serviço de Histórico",
+    "datasource": "Loki",
+    "targets": [{ "refId": "A", "expr": "{service_name=~\".*servico-historico.*\"}" }],
+    "options": { "dedupStrategy": "none", "enableLogDetails": true, "showCommonLabels": false, "showLabels": true, "sortOrder": "Descending", "wrapLogMessage": true },
+    "gridPos": { "h": 20, "w": 24, "x": 0, "y": 0 }
+  }]
+}

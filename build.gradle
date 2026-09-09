@@ -4,6 +4,15 @@ plugins {
     id 'com.google.protobuf' version '0.10.0' apply false
 }
 
+def jacocoExclusions = [
+        '**/*Application.class',
+        '**/config/**',
+        '**/dto/**',
+        '**/exception/**',
+        '**/repository/**',
+        '**/contratos/**'
+]
+
 allprojects {
     group = 'br.com.fiap.techchallenge'
     version = '0.0.1-SNAPSHOT'
@@ -16,6 +25,7 @@ allprojects {
 subprojects {
     apply plugin: 'java'
     apply plugin: 'io.spring.dependency-management'
+    apply plugin: 'jacoco'
 
     java {
         toolchain {
@@ -25,5 +35,24 @@ subprojects {
 
     tasks.withType(Test).configureEach {
         useJUnitPlatform()
+        finalizedBy tasks.named('jacocoTestReport')
+    }
+
+    jacoco {
+        toolVersion = '0.8.13'
+    }
+
+    tasks.named('jacocoTestReport') {
+        dependsOn tasks.named('test')
+
+        classDirectories.setFrom(files(classDirectories.files.collect { directory ->
+            fileTree(dir: directory, exclude: jacocoExclusions)
+        }))
+
+        reports {
+            xml.required = true
+            html.required = true
+            csv.required = false
+        }
     }
 }
