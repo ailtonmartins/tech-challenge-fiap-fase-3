@@ -190,6 +190,20 @@ atual. São permitidas as transições `AGENDADA → CONFIRMADA/CANCELADA` e
 Cada transição incrementa a versão, retorna a nova versão e publica
 `CONSULTA_ATUALIZADA`. Consultas `REALIZADA` e `CANCELADA` são estados finais.
 
+Quando uma validação falha, a API responde `400` com `code` igual a
+`VALIDATION_ERROR` e o motivo de cada campo em `details`. Exemplo:
+
+```json
+{
+  "code": "VALIDATION_ERROR",
+  "message": "Dados de entrada inválidos",
+  "details": {
+    "dataHora": "dataHora deve estar no futuro",
+    "version": "version é obrigatória"
+  }
+}
+```
+
 ## Eventos Kafka
 
 Os eventos `CONSULTA_CRIADA` e `CONSULTA_ATUALIZADA` têm `eventId`, tipo,
