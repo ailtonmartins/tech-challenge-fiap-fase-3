@@ -66,6 +66,21 @@ class AgendamentoControllerTest {
     }
 
     @Test
+    void deveDelegarConfirmacaoOuCancelamentoDeConsulta() {
+        ConsultaService service = mock(ConsultaService.class);
+        ConsultaController controller = new ConsultaController(service);
+        var authentication = autenticacao("paciente", "ROLE_PACIENTE");
+        UUID consultaId = UUID.randomUUID();
+        var confirmar = new AtualizarStatusConsultaRequest(StatusConsulta.CANCELADA, 2L);
+        var response = new ConsultaResponse(consultaId, UUID.randomUUID(), "Dra. Ana", "Cardiologia",
+                OffsetDateTime.now().plusDays(2), StatusConsulta.CANCELADA, 3L);
+        when(service.confirmarConsulta(consultaId, confirmar, authentication)).thenReturn(response);
+
+        assertThat(controller.confirmarConsulta(consultaId, confirmar, authentication)).isEqualTo(response);
+        verify(service).confirmarConsulta(consultaId, confirmar, authentication);
+    }
+
+    @Test
     void deveRetornarPerfilOuSemPerfilDoUsuarioAutenticado() {
         UsuarioController controller = new UsuarioController();
 

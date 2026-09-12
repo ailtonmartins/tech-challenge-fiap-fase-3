@@ -41,6 +41,20 @@ class ConsultaAuthorizationServiceTest {
     }
 
     @Test
+    void devePermitirQuePacienteConfirmeOuCanceleConsulta() {
+        assertDoesNotThrow(() -> authorizationService.confirmarOuCancelarConsulta(
+                autenticacao("paciente.maria", "ROLE_PACIENTE")));
+    }
+
+    @Test
+    void deveImpedirQueMedicoOuEnfermeiroConfirmeOuCanceleConsulta() {
+        assertThrows(AccessDeniedException.class,
+                () -> authorizationService.confirmarOuCancelarConsulta(autenticacao("medico.ana", "ROLE_MEDICO")));
+        assertThrows(AccessDeniedException.class,
+                () -> authorizationService.confirmarOuCancelarConsulta(autenticacao("enfermeiro.carlos", "ROLE_ENFERMEIRO")));
+    }
+
+    @Test
     void devePermitirQueProfissionalConsulteHistoricoDeQualquerPaciente() {
         assertDoesNotThrow(() -> authorizationService.autorizarConsultaDeHistorico(
                 autenticacao("medico.ana", "ROLE_MEDICO"), UUID.randomUUID()));

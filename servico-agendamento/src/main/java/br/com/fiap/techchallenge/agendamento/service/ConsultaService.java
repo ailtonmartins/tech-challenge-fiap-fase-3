@@ -8,16 +8,13 @@ import br.com.fiap.techchallenge.agendamento.dto.ConsultaResponse;
 import br.com.fiap.techchallenge.agendamento.dto.CriarConsultaRequest;
 import br.com.fiap.techchallenge.agendamento.event.ConsultaCriadaEvent;
 import br.com.fiap.techchallenge.agendamento.event.ConsultaAtualizadaEvent;
-import br.com.fiap.techchallenge.agendamento.exception.ConflitoDeAgendamentoException;
-import br.com.fiap.techchallenge.agendamento.exception.ConflitoDeAtualizacaoException;
-import br.com.fiap.techchallenge.agendamento.exception.ConsultaNaoEncontradaException;
-import br.com.fiap.techchallenge.agendamento.exception.ConsultaNaoPodeSerAlteradaException;
-import br.com.fiap.techchallenge.agendamento.exception.PacienteNaoEncontradoException;
-import br.com.fiap.techchallenge.agendamento.exception.TransicaoDeStatusInvalidaException;
+import br.com.fiap.techchallenge.agendamento.exception.*;
 import br.com.fiap.techchallenge.agendamento.model.Consulta;
 import br.com.fiap.techchallenge.agendamento.model.Paciente;
+import br.com.fiap.techchallenge.agendamento.model.StatusConsulta;
 import br.com.fiap.techchallenge.agendamento.repository.ConsultaRepository;
 import br.com.fiap.techchallenge.agendamento.repository.PacienteRepository;
+import jakarta.transaction.Status;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -116,6 +113,28 @@ public class ConsultaService {
         Consulta consultaAtualizada = consultaRepository.saveAndFlush(consulta);
 
         eventPublisher.publishEvent(new ConsultaAtualizadaEvent(criarEventoAtualizado(consultaAtualizada, paciente)));
+        return ConsultaResponse.from(consultaAtualizada);
+    }
+
+    @Transactional
+    public ConsultaResponse confirmarConsulta(UUID consultaId, AtualizarStatusConsultaRequest request, Authentication authentication) {
+        authorizationService.confirmarOuCancelarConsulta(authentication);
+        if(request.status() != StatusConsulta.REALIZADA && request.status() != StatusConsulta.CANCELADA) {
+            throw new StatusInvalidoException();
+        }
+
+        Consulta consulta = consultaRepository.findById(consultaId)
+                .orElseThrow(() -> new ConsultaNaoEncontradaException(consultaId));
+        if (!Objects.equals(consulta.getVersion(), request.version())) {
+            throw new ConflitoDeAtualizacaoException();
+        }
+        if (!consulta.getStatus().podeTransicionarPara(request.status())) {
+            throw new TransicaoDeStatusInvalidaException();
+        }
+
+        consulta.atualizarStatus(request.status());
+        Consulta consultaAtualizada = consultaRepository.saveAndFlush(consulta);
+
         return ConsultaResponse.from(consultaAtualizada);
     }
 

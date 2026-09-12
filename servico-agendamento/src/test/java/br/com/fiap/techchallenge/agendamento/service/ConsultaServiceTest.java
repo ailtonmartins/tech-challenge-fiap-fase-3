@@ -12,6 +12,7 @@ import br.com.fiap.techchallenge.agendamento.exception.ConflitoDeAgendamentoExce
 import br.com.fiap.techchallenge.agendamento.exception.ConflitoDeAtualizacaoException;
 import br.com.fiap.techchallenge.agendamento.exception.ConsultaNaoPodeSerAlteradaException;
 import br.com.fiap.techchallenge.agendamento.exception.PacienteNaoEncontradoException;
+import br.com.fiap.techchallenge.agendamento.exception.StatusInvalidoException;
 import br.com.fiap.techchallenge.agendamento.exception.TransicaoDeStatusInvalidaException;
 import br.com.fiap.techchallenge.agendamento.model.Consulta;
 import br.com.fiap.techchallenge.agendamento.model.Paciente;
@@ -189,6 +190,38 @@ class ConsultaServiceTest {
                 () -> consultaService.atualizarStatus(consulta.getId(),
                         new AtualizarStatusConsultaRequest(StatusConsulta.CONFIRMADA, consulta.getVersion()), authentication()));
         verify(consultaRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void deveConfirmarConsultaComStatusPermitido() {
+        UUID pacienteId = UUID.randomUUID();
+        Consulta consulta = consulta(pacienteId);
+        Authentication auth = authentication();
+        AtualizarStatusConsultaRequest request = new AtualizarStatusConsultaRequest(StatusConsulta.CANCELADA, consulta.getVersion());
+
+        when(consultaRepository.findById(consulta.getId())).thenReturn(Optional.of(consulta));
+        when(consultaRepository.saveAndFlush(consulta)).thenAnswer(invocation -> {
+            ReflectionTestUtils.setField(consulta, "version", request.version() + 1);
+            return consulta;
+        });
+
+        ConsultaResponse response = consultaService.confirmarConsulta(consulta.getId(), request, auth);
+
+        assertEquals(StatusConsulta.CANCELADA, response.status());
+        assertEquals(request.version() + 1, response.version());
+        verify(authorizationService).confirmarOuCancelarConsulta(auth);
+    }
+
+    @Test
+    void deveRejeitarStatusInvalidoNaConfirmacao() {
+        Consulta consulta = consulta(UUID.randomUUID());
+        Authentication auth = authentication();
+        AtualizarStatusConsultaRequest request = new AtualizarStatusConsultaRequest(StatusConsulta.CONFIRMADA, consulta.getVersion());
+
+        assertThrows(StatusInvalidoException.class,
+                () -> consultaService.confirmarConsulta(consulta.getId(), request, auth));
+        verify(authorizationService).confirmarOuCancelarConsulta(auth);
+        verify(consultaRepository, never()).findById(any());
     }
 
     private CriarConsultaRequest request(UUID pacienteId) {

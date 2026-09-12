@@ -20,7 +20,14 @@ public class ConsultaAuthorizationService {
     }
 
     public void autorizarGerenciamentoDeConsulta(Authentication authentication) {
-        if (possuiPerfil(authentication, PerfilUsuario.MEDICO) || possuiPerfil(authentication, PerfilUsuario.ENFERMEIRO)) {
+        if (possuiPerfil(authentication, PerfilUsuario.PACIENTE) || possuiPerfil(authentication, PerfilUsuario.ENFERMEIRO)) {
+            return;
+        }
+        throw new AccessDeniedException("Perfil sem permissão para gerenciar consultas");
+    }
+
+    public void confirmarOuCancelarConsulta(Authentication authentication) {
+        if (possuiPerfil(authentication, PerfilUsuario.PACIENTE)) {
             return;
         }
         throw new AccessDeniedException("Perfil sem permissão para gerenciar consultas");
