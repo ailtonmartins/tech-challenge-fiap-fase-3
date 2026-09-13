@@ -118,13 +118,13 @@ public class ConsultaService {
 
     @Transactional
     public ConsultaResponse confirmarConsulta(UUID consultaId, AtualizarStatusConsultaRequest request, Authentication authentication) {
-        authorizationService.confirmarOuCancelarConsulta(authentication);
-        if(request.status() != StatusConsulta.REALIZADA && request.status() != StatusConsulta.CANCELADA) {
+        if (request.status() != StatusConsulta.CONFIRMADA && request.status() != StatusConsulta.CANCELADA) {
             throw new StatusInvalidoException();
         }
 
         Consulta consulta = consultaRepository.findById(consultaId)
                 .orElseThrow(() -> new ConsultaNaoEncontradaException(consultaId));
+        authorizationService.confirmarOuCancelarConsulta(authentication, consulta.getPacienteId());
         if (!Objects.equals(consulta.getVersion(), request.version())) {
             throw new ConflitoDeAtualizacaoException();
         }
@@ -132,9 +132,12 @@ public class ConsultaService {
             throw new TransicaoDeStatusInvalidaException();
         }
 
+        Paciente paciente = pacienteRepository.findById(consulta.getPacienteId())
+                .orElseThrow(() -> new PacienteNaoEncontradoException(consulta.getPacienteId()));
         consulta.atualizarStatus(request.status());
         Consulta consultaAtualizada = consultaRepository.saveAndFlush(consulta);
 
+        eventPublisher.publishEvent(new ConsultaAtualizadaEvent(criarEventoAtualizado(consultaAtualizada, paciente)));
         return ConsultaResponse.from(consultaAtualizada);
     }
 

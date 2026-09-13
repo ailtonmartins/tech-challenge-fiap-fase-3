@@ -42,16 +42,29 @@ class ConsultaAuthorizationServiceTest {
 
     @Test
     void devePermitirQuePacienteConfirmeOuCanceleConsulta() {
+        UUID pacienteDaMaria = UUID.randomUUID();
+        Usuario maria = new Usuario("paciente.maria", "hash", PerfilUsuario.PACIENTE, true, pacienteDaMaria);
+        when(usuarioRepository.findByUsername("paciente.maria")).thenReturn(Optional.of(maria));
+
         assertDoesNotThrow(() -> authorizationService.confirmarOuCancelarConsulta(
-                autenticacao("paciente.maria", "ROLE_PACIENTE")));
+                autenticacao("paciente.maria", "ROLE_PACIENTE"), pacienteDaMaria));
+    }
+
+    @Test
+    void deveImpedirQuePacienteConfirmeOuCanceleConsultaDeOutroPaciente() {
+        Usuario maria = new Usuario("paciente.maria", "hash", PerfilUsuario.PACIENTE, true, UUID.randomUUID());
+        when(usuarioRepository.findByUsername("paciente.maria")).thenReturn(Optional.of(maria));
+
+        assertThrows(AccessDeniedException.class, () -> authorizationService.confirmarOuCancelarConsulta(
+                autenticacao("paciente.maria", "ROLE_PACIENTE"), UUID.randomUUID()));
     }
 
     @Test
     void deveImpedirQueMedicoOuEnfermeiroConfirmeOuCanceleConsulta() {
         assertThrows(AccessDeniedException.class,
-                () -> authorizationService.confirmarOuCancelarConsulta(autenticacao("medico.ana", "ROLE_MEDICO")));
+                () -> authorizationService.confirmarOuCancelarConsulta(autenticacao("medico.ana", "ROLE_MEDICO"), UUID.randomUUID()));
         assertThrows(AccessDeniedException.class,
-                () -> authorizationService.confirmarOuCancelarConsulta(autenticacao("enfermeiro.carlos", "ROLE_ENFERMEIRO")));
+                () -> authorizationService.confirmarOuCancelarConsulta(autenticacao("enfermeiro.carlos", "ROLE_ENFERMEIRO"), UUID.randomUUID()));
     }
 
     @Test

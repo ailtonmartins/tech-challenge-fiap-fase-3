@@ -197,9 +197,11 @@ class ConsultaServiceTest {
         UUID pacienteId = UUID.randomUUID();
         Consulta consulta = consulta(pacienteId);
         Authentication auth = authentication();
-        AtualizarStatusConsultaRequest request = new AtualizarStatusConsultaRequest(StatusConsulta.CANCELADA, consulta.getVersion());
+        AtualizarStatusConsultaRequest request = new AtualizarStatusConsultaRequest(StatusConsulta.CONFIRMADA, consulta.getVersion());
+        Paciente paciente = new Paciente("Maria Souza", "maria@example.com", "+55 11 99999-9999", OffsetDateTime.now().minusYears(30).toLocalDate());
 
         when(consultaRepository.findById(consulta.getId())).thenReturn(Optional.of(consulta));
+        when(pacienteRepository.findById(pacienteId)).thenReturn(Optional.of(paciente));
         when(consultaRepository.saveAndFlush(consulta)).thenAnswer(invocation -> {
             ReflectionTestUtils.setField(consulta, "version", request.version() + 1);
             return consulta;
@@ -207,20 +209,21 @@ class ConsultaServiceTest {
 
         ConsultaResponse response = consultaService.confirmarConsulta(consulta.getId(), request, auth);
 
-        assertEquals(StatusConsulta.CANCELADA, response.status());
+        assertEquals(StatusConsulta.CONFIRMADA, response.status());
         assertEquals(request.version() + 1, response.version());
-        verify(authorizationService).confirmarOuCancelarConsulta(auth);
+        verify(authorizationService).confirmarOuCancelarConsulta(auth, pacienteId);
+        verify(eventPublisher).publishEvent(any(ConsultaAtualizadaEvent.class));
     }
 
     @Test
     void deveRejeitarStatusInvalidoNaConfirmacao() {
         Consulta consulta = consulta(UUID.randomUUID());
         Authentication auth = authentication();
-        AtualizarStatusConsultaRequest request = new AtualizarStatusConsultaRequest(StatusConsulta.CONFIRMADA, consulta.getVersion());
+        AtualizarStatusConsultaRequest request = new AtualizarStatusConsultaRequest(StatusConsulta.REALIZADA, consulta.getVersion());
 
         assertThrows(StatusInvalidoException.class,
                 () -> consultaService.confirmarConsulta(consulta.getId(), request, auth));
-        verify(authorizationService).confirmarOuCancelarConsulta(auth);
+        verify(authorizationService, never()).confirmarOuCancelarConsulta(any(), any());
         verify(consultaRepository, never()).findById(any());
     }
 

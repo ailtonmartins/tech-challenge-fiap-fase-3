@@ -56,6 +56,12 @@ public class GlobalExceptionHandler {
                 .body(new ErroResponse("CONFLICT", "Transição de status da consulta não permitida"));
     }
 
+    @ExceptionHandler(StatusInvalidoException.class)
+    ResponseEntity<ErroResponse> statusInvalido() {
+        return ResponseEntity.badRequest()
+                .body(new ErroResponse("VALIDATION_ERROR", "Status não permitido para esta operação"));
+    }
+
     @ExceptionHandler(ConflitoDeAtualizacaoException.class)
     ResponseEntity<ErroResponse> conflitoDeAtualizacao() {
         return ResponseEntity.status(HttpStatus.CONFLICT)

@@ -180,6 +180,12 @@ Para mudar o ciclo de vida, use `PATCH /api/consultas/{id}/status` com a versão
 atual. São permitidas as transições `AGENDADA → CONFIRMADA/CANCELADA` e
 `CONFIRMADA → REALIZADA/CANCELADA`.
 
+O paciente também pode confirmar ou cancelar a própria consulta por
+`PATCH /api/consultas/{id}/confirmar`. Nesse endpoint, os únicos status
+aceitos são `CONFIRMADA` e `CANCELADA`; `REALIZADA` é uma ação de profissional
+executada pelo endpoint `/status`. O paciente só pode operar consultas
+vinculadas ao seu próprio usuário autenticado.
+
 ```json
 {
   "status": "CONFIRMADA",
