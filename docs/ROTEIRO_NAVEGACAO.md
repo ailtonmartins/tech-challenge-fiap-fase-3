@@ -51,6 +51,10 @@ stateDiagram-v2
     CANCELADA --> [*]
 ```
 
+O paciente pode confirmar ou cancelar somente uma consulta vinculada ao seu
+próprio usuário. Médico e enfermeiro fazem as transições de gestão pelo
+endpoint `/api/consultas/{id}/status`; `REALIZADA` é exclusiva desse fluxo.
+
 ## 3. Credenciais de demonstração
 
 Todas as contas usam a senha `fiap-dev-2026` no perfil `dev`.

@@ -1,7 +1,7 @@
 type Query {
-  historicoDoPaciente(pacienteId: ID!, pagina: Int = 0, tamanho: Int = 20): PaginaHistorico!
-  consultasFuturas(pacienteId: ID!, pagina: Int = 0, tamanho: Int = 20): PaginaHistorico!
-  minhasConsultas(somenteFuturas: Boolean = false, pagina: Int = 0, tamanho: Int = 20): PaginaMinhasConsultas!
+  historicoDoPaciente(pacienteId: ID!, pagina: Int = 0, tamanho: Int = 20): PaginaHistorico
+  consultasFuturas(pacienteId: ID!, pagina: Int = 0, tamanho: Int = 20): PaginaHistorico
+  minhasConsultas(somenteFuturas: Boolean = false, pagina: Int = 0, tamanho: Int = 20): PaginaMinhasConsultas
 }
 
 type PaginaMinhasConsultas {

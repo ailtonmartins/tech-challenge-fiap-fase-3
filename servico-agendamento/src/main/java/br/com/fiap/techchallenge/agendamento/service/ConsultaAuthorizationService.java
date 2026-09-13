@@ -26,6 +26,18 @@ public class ConsultaAuthorizationService {
         throw new AccessDeniedException("Perfil sem permissão para gerenciar consultas");
     }
 
+    public void confirmarOuCancelarConsulta(Authentication authentication, UUID pacienteIdDaConsulta) {
+        if (!possuiPerfil(authentication, PerfilUsuario.PACIENTE)) {
+            throw new AccessDeniedException("Perfil sem permissão para gerenciar consultas");
+        }
+
+        Usuario usuario = usuarioRepository.findByUsername(authentication.getName())
+                .orElseThrow(() -> new AccessDeniedException("Usuário autenticado não encontrado"));
+        if (!pacienteIdDaConsulta.equals(usuario.getPacienteId())) {
+            throw new AccessDeniedException("Paciente não possui acesso à consulta solicitada");
+        }
+    }
+
     public void autorizarConsultaDeHistorico(Authentication authentication, UUID pacienteIdSolicitado) {
         if (possuiPerfil(authentication, PerfilUsuario.MEDICO) || possuiPerfil(authentication, PerfilUsuario.ENFERMEIRO)) {
             return;

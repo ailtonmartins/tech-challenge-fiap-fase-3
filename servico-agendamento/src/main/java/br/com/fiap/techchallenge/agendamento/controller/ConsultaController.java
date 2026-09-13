@@ -50,4 +50,12 @@ public class ConsultaController {
             Authentication authentication) {
         return consultaService.atualizarStatus(id, request, authentication);
     }
+
+    @PatchMapping("/{id}/confirmar")
+    public ConsultaResponse confirmarConsulta(
+            @PathVariable java.util.UUID id,
+            @Valid @RequestBody AtualizarStatusConsultaRequest request,
+            Authentication authentication) {
+        return consultaService.confirmarConsulta(id, request, authentication);
+    }
 }
